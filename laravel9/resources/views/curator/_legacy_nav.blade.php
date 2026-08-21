@@ -7,8 +7,8 @@
 <a class="btn btn-sm gray" href="{{route('curator.practice')}}">Курирование практик</a>
 <a class="btn btn-sm gray" href="{{route('curator.documents')}}">Рабочие документы</a>
 <a class="btn btn-sm gray" href="{{route('curator.files')}}">Проверка файлов студентов</a>
-<a class="btn btn-sm gray" href="{{route('curator.announcements')}}">Объявления</a>
-<a class="btn btn-sm gray" href="{{route('curator.logins')}}">Проверка IP</a>
+<a class="btn btn-sm gray" href="{{route('curator.legacy-announcements')}}">Объявления</a>
+<a class="btn btn-sm gray" href="{{route('curator.legacy-logins')}}">Проверка IP</a>
 <a class="btn btn-sm gray" href="{{route('curator.surveys')}}">Анкеты</a>
 <a class="btn btn-sm gray" href="{{route('curator.statistics')}}">Статистика</a>
 <a class="btn btn-sm gray" href="{{route('curator.tables')}}">Таблицы</a>
