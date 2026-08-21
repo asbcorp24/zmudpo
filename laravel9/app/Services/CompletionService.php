@@ -29,10 +29,16 @@ class CompletionService {
 
   if($e->status!=='completed') {
    $e->update(['status'=>'completed','progress_percent'=>100,'completed_at'=>now()]);
-   ArchiveRecord::firstOrCreate(
-    ['user_id'=>$e->user_id,'program_id'=>$e->program_id,'type'=>'completion','data->enrollment_id'=>$e->id],
-    ['title'=>$e->program->title,'started_at'=>$e->started_at,'ended_at'=>now(),'data'=>['enrollment_id'=>$e->id,'required_quiz_assignments'=>$requiredAssignments->count(),'required_final_works'=>$finalDefinitionIds->count()]]
-   );
+   $alreadyArchived=ArchiveRecord::where('user_id',$e->user_id)->where('program_id',$e->program_id)->where('type','completion')->where('data->enrollment_id',$e->id)->exists();
+   if(!$alreadyArchived) ArchiveRecord::create([
+    'user_id'=>$e->user_id,
+    'program_id'=>$e->program_id,
+    'type'=>'completion',
+    'title'=>$e->program->title,
+    'started_at'=>$e->started_at,
+    'ended_at'=>now(),
+    'data'=>['enrollment_id'=>$e->id,'required_quiz_assignments'=>$requiredAssignments->count(),'required_final_works'=>$finalDefinitionIds->count()]
+   ]);
   }
  }
 }
