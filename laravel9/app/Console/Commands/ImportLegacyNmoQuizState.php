@@ -1,15 +1,14 @@
 <?php
 namespace App\Console\Commands;
 
-use App\Models\{LearningSection,LearningSectionProgress,LegacyQuizXmlResult,Program,Quiz,QuizAssignment,QuizUserOverride,User};
+use App\Models\{LearningSection,LearningSectionProgress,LegacyQuizXmlResult,QuizAssignment,QuizUserOverride,SectionProgress,User};
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ImportLegacyNmoQuizState extends Command
 {
  protected $signature='legacy:import-nmo-quiz-state {--dry-run} {--xml-dir=}';
- protected $description='Import NMO test activation, section progress and legacy XML result archives without importing question bank';
+ protected $description='Import NMO test activation, section progress and legacy XML result archives';
  public function handle(): int {
   $db=DB::connection('legacy');$schema=$db->getSchemaBuilder();
   foreach(['tm_nmo_razd_media_user_act_test','tm_nmo_razd_user','tm_nmo_razd_media'] as $t)$this->line(($schema->hasTable($t)?'[+] ':'[-] ').$t);
@@ -22,7 +21,34 @@ class ImportLegacyNmoQuizState extends Command
   return self::SUCCESS;
  }
  private function importProgress($db,$users,$sections): void {
-  $done=$skip=0;$db->table('tm_nmo_razd_user')->orderBy('id')->chunkById(500,function($rows)use($users,$sections,&$done,&$skip){foreach($rows as $r){$uid=$users[(int)($r->user??0)]??null;$section=$sections[(int)($r->razdel??0)]??null;if(!$uid){$skip++;continue;}LearningSectionProgress::updateOrCreate(['legacy_id'=>(int)$r->id],['user_id'=>$uid,'learning_section_id'=>$section?->id,'program_id'=>$section?->program_id,'legacy_section_id'=>(int)($r->razdel??0),'completed'=>(bool)($r->proydeno??0),'sp'=>isset($r->sp)?(int)$r->sp:null,'psp'=>isset($r->psp)?(int)$r->psp:null,'pop'=>isset($r->pop)?(string)$r->pop:null,'legacy_date'=>$this->date($r->dat??null),'legacy_file'=>$r->dop_file??null,'extra'=>['dop'=>$r->dop??null]]);$done++;}},'id');$this->info("Состояния разделов НМО: {$done}; пропущено: {$skip}");
+  $done=$skip=$synced=0;
+  $db->table('tm_nmo_razd_user')->orderBy('id')->chunkById(500,function($rows)use($users,$sections,&$done,&$skip,&$synced){
+   foreach($rows as $r){
+    $uid=$users[(int)($r->user??0)]??null;$section=$sections[(int)($r->razdel??0)]??null;
+    if(!$uid){$skip++;continue;}
+    $completed=(bool)($r->proydeno??0);$legacyDate=$this->date($r->dat??null);
+    LearningSectionProgress::updateOrCreate(['legacy_id'=>(int)$r->id],[
+     'user_id'=>$uid,'learning_section_id'=>$section?->id,'program_id'=>$section?->program_id,
+     'legacy_section_id'=>(int)($r->razdel??0),'completed'=>$completed,
+     'sp'=>isset($r->sp)?(int)$r->sp:null,'psp'=>isset($r->psp)?(int)$r->psp:null,'pop'=>isset($r->pop)?(string)$r->pop:null,
+     'legacy_date'=>$legacyDate,'legacy_file'=>$r->dop_file??null,'extra'=>['dop'=>$r->dop??null]
+    ]);
+    // The modern student cabinet, prerequisites and CompletionService use section_progress.
+    // Mirror mapped NMO state there so migrated users do not lose already completed sections.
+    if($section){
+     $current=SectionProgress::firstOrNew(['user_id'=>$uid,'learning_section_id'=>$section->id]);
+     if($completed){
+      $current->progress_percent=100;
+      if(!$current->completed_at)$current->completed_at=$legacyDate?:now();
+     } elseif(!$current->exists && $current->progress_percent===null){
+      $current->progress_percent=0;
+     }
+     $meta=(array)($current->meta??[]);$meta['legacy_nmo_progress_id']=(int)$r->id;$meta['legacy_nmo']=true;$current->meta=$meta;$current->save();$synced++;
+    }
+    $done++;
+   }
+  },'id');
+  $this->info("Состояния разделов НМО: {$done}; синхронизировано с кабинетом: {$synced}; пропущено: {$skip}");
  }
  private function importActivations($db,$users,$sections): void {
   $media=$db->table('tm_nmo_razd_media')->where('tip',3)->get()->keyBy('id');$assignments=QuizAssignment::with('quiz')->get();$done=$skip=0;
