@@ -99,10 +99,15 @@ class ImportLegacyNmoContent extends Command
         if(in_array($type,[6,7,11,16,20],true))return [null,null,null];
         $base=match($type){1=>$nmoDir.DIRECTORY_SEPARATOR.'doc',19=>$nmoDir.DIRECTORY_SEPARATOR.'csv',17=>$notebookDir,default=>$nmoDir.DIRECTORY_SEPARATOR.'test'};
         $source=$base.DIRECTORY_SEPARATOR.str_replace(['/', '\\'],DIRECTORY_SEPARATOR,$path);
-        if(in_array($type,[3,15,17,18,21,22],true)){
-            $root=dirname($source);if(is_file($source)&&in_array(strtolower(pathinfo($source,PATHINFO_EXTENSION)),['html','htm'],true)){
-                $destRoot='nmo/imported/packages/'.Str::uuid();$this->copyDirectory($root,$destRoot);$rel=str_replace('\\','/',substr($source,strlen(rtrim($root,'/\\'))+1));return [$destRoot.'/'.$rel,$destRoot,null];
+        if(in_array($type,[3,15,17,18,21,22],true)&&is_file($source)&&in_array(strtolower(pathinfo($source,PATHINFO_EXTENSION)),['html','htm'],true)){
+            $destRoot='nmo/imported/packages/'.Str::uuid();
+            $relative=str_replace('\\','/',trim($path,'/\\'));
+            if(str_contains($relative,'/')){
+                $packageDir=dirname($source);$this->copyDirectory($packageDir,$destRoot);$entry=basename($source);
+            }else{
+                $entry=basename($source);Storage::put($destRoot.'/'.$entry,File::get($source));
             }
+            return [$destRoot.'/'.$entry,$destRoot,null];
         }
         return [$this->copyLegacyFile($source,'nmo/imported/items'),null,null];
     }
