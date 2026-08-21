@@ -12,10 +12,7 @@ class FinalWorkController extends Controller
     {
         $enrollments=$request->user()->enrollments()->with('program')->whereIn('status',['active','completed'])->get();
         $programIds=$enrollments->pluck('program_id');
-        $definitions=FinalWorkDefinition::with([
-                'programs:id,title',
-                'themes'=>fn($q)=>$q->where('is_active',true),
-            ])
+        $definitions=FinalWorkDefinition::with(['programs:id,title','themes'=>fn($q)=>$q->where('is_active',true)])
             ->where('is_active',true)
             ->whereHas('programs',fn($q)=>$q->whereIn('programs.id',$programIds))
             ->get();
@@ -45,20 +42,22 @@ class FinalWorkController extends Controller
         $path=$request->file('file')->store('final-works/'.$request->user()->id);
         if($work?->file_path) Storage::delete($work->file_path);
         $payload=[
-            'user_id'=>$request->user()->id,
-            'enrollment_id'=>$enrollment->id,
-            'final_work_definition_id'=>$definition->id,
-            'final_work_theme_id'=>$theme?->id,
-            'title'=>$data['title'] ?: ($theme?->title ?: $definition->title),
-            'file_path'=>$path,
-            'comment'=>$data['comment']??null,
-            'status'=>'submitted',
-            'submitted_at'=>now(),
-            'reviewed_at'=>null,
-            'reviewed_by'=>null,
-            'review_comment'=>null,
+            'user_id'=>$request->user()->id,'enrollment_id'=>$enrollment->id,
+            'final_work_definition_id'=>$definition->id,'final_work_theme_id'=>$theme?->id,
+            'title'=>$data['title'] ?: ($theme?->title ?: $definition->title),'file_path'=>$path,
+            'comment'=>$data['comment']??null,'status'=>'submitted','submitted_at'=>now(),
+            'reviewed_at'=>null,'reviewed_by'=>null,'review_comment'=>null,
         ];
         if($work) $work->update($payload); else FinalWork::create($payload);
         return back()->with('ok','Итоговая работа отправлена на проверку.');
+    }
+
+    public function download(Request $request, FinalWork $finalWork)
+    {
+        $allowed=$finalWork->user_id===$request->user()->id || in_array($request->user()->role,['curator','admin'],true);
+        abort_unless($allowed,403);
+        abort_unless($finalWork->file_path && Storage::exists($finalWork->file_path),404);
+        $ext=pathinfo($finalWork->file_path,PATHINFO_EXTENSION);
+        return Storage::download($finalWork->file_path,($finalWork->title?:'final-work').($ext?'.'.$ext:''));
     }
 }
