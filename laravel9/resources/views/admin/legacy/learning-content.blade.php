@@ -1,15 +1,38 @@
 @extends('layouts.app')
 @section('title','Конструктор обучения')
 @section('content')
-<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><div><h2 style="margin:0 0 6px">Конструктор НМО / ДПО</h2><div style="color:#667085">Современный аналог старого <b>add_nmo.php</b>: выберите специальность и управляйте её разделами и учебными элементами.</div></div><a class="btn gray" href="{{ route('admin.programs.index') }}">Специальности и программы</a></div></div>
-<div class="card"><form method="get" action="{{ route('admin.nmo.index') }}"><label>Специальность / программа</label><select name="program_id" onchange="this.form.submit()">@foreach($programs as $p)<option value="{{$p->id}}" @selected($program?->id==$p->id)>{{$p->title}}</option>@endforeach</select></form></div>
-@if($program)
-<div class="card"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><strong style="font-size:18px">{{$program->title}}</strong><div style="color:#667085;margin-top:4px">{{strtoupper($program->mode)}} @if($program->hours) · {{$program->hours}} ч.@endif</div></div><a class="btn gray" href="{{route('admin.programs.edit',$program)}}">Настройки программы</a></div></div>
-<div class="card"><h3 style="margin-top:0">Добавить раздел</h3><form method="post" action="{{route('admin.legacy.content-section')}}">@csrf<input type="hidden" name="program_id" value="{{$program->id}}"><div class="grid"><div><label>Название раздела</label><input name="title" placeholder="Например: Модуль 1. Теоретическая подготовка" required></div><div><label>Порядок</label><input type="number" name="position" value="0" min="0"></div></div><label>Описание</label><textarea name="description" rows="2"></textarea><label><input style="width:auto" type="checkbox" name="is_required" value="1"> Обязательный раздел</label><button class="btn">Создать раздел</button></form></div>
-@foreach($sections as $s)
-<div class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><b style="font-size:18px">{{$s->position}}. {{$s->title}}</b>@if($s->is_required)<span style="margin-left:8px;color:#215dcc">обязательный</span>@endif</div><span style="color:#667085">Элементов: {{$s->contentItems->count()}}</span></div>@if($s->description)<p style="color:#667085">{{$s->description}}</p>@endif<table><tr><th>#</th><th>Тип</th><th>Название</th><th>Обяз.</th><th>Доступ</th></tr>@forelse($s->contentItems as $x)<tr><td>{{$x->position}}</td><td>{{$x->type}}</td><td>{{$x->title}}</td><td>{{$x->is_required?'да':'нет'}}</td><td>{{$x->available_from}} — {{$x->available_until}}</td></tr>@empty<tr><td colspan="5">В разделе пока нет материалов.</td></tr>@endforelse</table><details style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;color:#215dcc">+ Добавить учебный элемент</summary><form method="post" action="{{route('admin.legacy.content-item')}}" style="margin-top:14px">@csrf<input type="hidden" name="learning_section_id" value="{{$s->id}}"><div class="grid"><div><label>Название</label><input name="title" required></div><div><label>Тип</label><select name="type">@foreach(['document','video','test','control_work','completion','questionnaire','file','response','payment','link','certificate_test','practice','notebook','questionnaire_test','table','random','test_answers','exam'] as $v)<option value="{{$v}}">{{$v}}</option>@endforeach</select></div><div><label>Порядок</label><input type="number" name="position" value="0"></div><div><label>Количество повторов</label><input type="number" name="repeat_limit" min="1"></div><div><label>Доступ с</label><input type="datetime-local" name="available_from"></div><div><label>Доступ до</label><input type="datetime-local" name="available_until"></div></div><label>Файл / путь</label><input name="file_path"><label>URL</label><input name="external_url"><label>Текст / комментарий</label><textarea name="body" rows="3"></textarea><label>Дополнительные настройки</label><textarea name="settings_json" rows="3" placeholder='{"certificate_hours":72}'></textarea><label><input style="width:auto" type="checkbox" name="is_required" value="1" checked> Обязательный элемент</label><button class="btn">Добавить элемент</button></form></details></div>
-@endforeach
-@else
-<div class="card">Сначала создайте специальность / программу.</div>
-@endif
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><div><h2 style="margin:0 0 6px">Конструктор НМО / ДПО</h2><div style="color:#667085">Современный аналог старого <b>add_nmo.php</b>. Большинство действий выполняются без перезагрузки страницы.</div></div><a class="btn gray" href="{{ route('admin.programs.index') }}">Специальности и программы</a></div></div>
+<div id="ajaxNotice" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:#ecfdf3;color:#166534"></div>
+<div class="card"><label>Специальность / программа</label><select id="programSelector" name="program_id">@foreach($programs as $p)<option value="{{$p->id}}" @selected($program?->id==$p->id)>{{$p->title}}</option>@endforeach</select></div>
+<div id="nmoWorkspace">@include('admin.legacy._nmo-workspace',['program'=>$program,'sections'=>$sections])</div>
+<script>
+(()=>{
+ const workspace=document.getElementById('nmoWorkspace');
+ const selector=document.getElementById('programSelector');
+ const notice=document.getElementById('ajaxNotice');
+ const headers={'X-Requested-With':'XMLHttpRequest','Accept':'application/json'};
+ const show=(text,error=false)=>{notice.textContent=text;notice.style.display='block';notice.style.background=error?'#fef3f2':'#ecfdf3';notice.style.color=error?'#b42318':'#166534';clearTimeout(window.__nmoNoticeTimer);window.__nmoNoticeTimer=setTimeout(()=>notice.style.display='none',3500)};
+ const programId=()=>selector?.value||'';
+ async function refreshWorkspace(){
+   const url=new URL(@json(route('admin.nmo.index')),window.location.origin);url.searchParams.set('program_id',programId());
+   const r=await fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}});
+   if(!r.ok)throw new Error('Не удалось обновить конструктор');
+   workspace.innerHTML=await r.text();
+   history.replaceState({},'',url.pathname+'?'+url.searchParams.toString());
+ }
+ selector?.addEventListener('change',async()=>{selector.disabled=true;try{await refreshWorkspace()}catch(e){show(e.message,true)}finally{selector.disabled=false}});
+ document.addEventListener('submit',async e=>{
+   const form=e.target.closest('form[data-ajax="1"]');if(!form)return;
+   e.preventDefault();
+   const button=form.querySelector('[type="submit"]');if(button)button.disabled=true;
+   try{
+     const r=await fetch(form.action,{method:(form.method||'POST').toUpperCase(),body:new FormData(form),headers});
+     const data=await r.json().catch(()=>({message:'Ошибка сервера'}));
+     if(!r.ok){const first=data.errors?Object.values(data.errors).flat()[0]:null;throw new Error(first||data.message||'Ошибка сохранения');}
+     show(data.message||'Сохранено');
+     await refreshWorkspace();
+   }catch(err){show(err.message||'Ошибка',true)}finally{if(button)button.disabled=false}
+ });
+})();
+</script>
 @endsection
