@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{CuratorMessage,Enrollment,InstructorProgram,InstructorSlot,ResourceLibrary,Survey,SurveyField,SurveyResponse};
+use App\Models\{CuratorMessage,Enrollment,InstructorProgram,InstructorSlot,ResourceLibrary,Survey,SurveyResponse};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -30,8 +30,9 @@ class StudentServicesController extends Controller
     {
         $programIds=$request->user()->enrollments()->where('status','active')->pluck('program_id');
         $assignments=InstructorProgram::with(['instructor','program','slots'])->whereIn('program_id',$programIds)->get();
+        $slotIds=$assignments->flatMap(fn($a)=>$a->slots->pluck('id'));
         $booked=DB::table('instructor_slot_user')->where('user_id',$request->user()->id)->pluck('slot_id')->all();
-        $counts=DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) as cnt')->whereIn('slot_id',$assignments->flatMap(fn($a)=>$a->slots->pluck('id')))->groupBy('slot_id')->pluck('cnt','slot_id');
+        $counts=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) as cnt')->whereIn('slot_id',$slotIds)->groupBy('slot_id')->pluck('cnt','slot_id');
         return view('student-services.schedule',compact('assignments','booked','counts'));
     }
 
@@ -40,6 +41,7 @@ class StudentServicesController extends Controller
         $slot->load('instructorProgram');
         $assignment=$slot->instructorProgram;
         abort_unless($assignment && $request->user()->enrollments()->where('program_id',$assignment->program_id)->where('status','active')->exists(),403);
+        abort_if($slot->date && now()->gt($slot->date->endOfDay()),422,'Дата занятия уже прошла.');
         DB::transaction(function() use($request,$slot){
             $exists=DB::table('instructor_slot_user')->where('slot_id',$slot->id)->where('user_id',$request->user()->id)->exists();
             if($exists)return;
@@ -66,7 +68,7 @@ class StudentServicesController extends Controller
     public function submitSurvey(Request $request, Survey $survey)
     {
         abort_unless($survey->is_active,403);
-        $fields=$survey->fields()->where('is_active',true)->get();
+        $fields=$survey->fields()->orderBy('position')->get();
         foreach($fields as $field){
             $value=$request->input('field_'.$field->id);
             if(is_array($value))$value=json_encode(array_values($value),JSON_UNESCAPED_UNICODE);
@@ -81,7 +83,7 @@ class StudentServicesController extends Controller
         $resources=ResourceLibrary::where('is_active',true)->where(function($q)use($programIds){
             $q->whereExists(function($s)use($programIds){$s->selectRaw('1')->from('program_resource')->whereColumn('program_resource.resource_id','resource_library.id')->whereIn('program_resource.program_id',$programIds);})
               ->orWhereExists(function($s){$s->selectRaw('1')->from('program_resource')->whereColumn('program_resource.resource_id','resource_library.id')->whereNull('program_resource.program_id');});
-        })->orderByDesc('dated_at')->get();
+        })->orderByDesc('dated_at')->orderBy('title')->get();
         return view('student-services.resources',compact('resources'));
     }
 
