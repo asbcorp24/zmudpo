@@ -2,13 +2,11 @@
 @section('title','Сообщения слушателей')
 @section('content')
 @include('curator._legacy_nav')
-<div class="page-heading"><div><h1>Общение</h1><p>Диалоги по назначенным вам программам — аналог kurator_forum.php.</p></div></div>
+<div class="page-heading"><div><h1>Общение</h1><p>Диалоги по назначенным программам и архив tm_chat_kurator.</p></div></div>
 @forelse($enrollments as $enrollment)
 <div class="panel"><div class="panel-head"><div><h2>{{ $enrollment->user->full_name }}</h2><span>{{ $enrollment->program->title }}</span></div></div>
-<div style="max-height:360px;overflow:auto;margin-bottom:14px">
-@forelse($messages->get($enrollment->id,collect()) as $m)<div style="margin:8px 0;padding:10px 12px;border-radius:10px;background:{{ $m->from_curator?'#eef4ff':'#f4f7fb' }}"><strong>{{ $m->from_curator?'Вы':$enrollment->user->full_name }}</strong><div>{{ $m->message }}</div><small>{{ $m->created_at->format('d.m.Y H:i') }}</small></div>@empty<p class="empty">Сообщений пока нет.</p>@endforelse
-</div>
-<form method="post" action="{{ route('curator.messages.send',$enrollment) }}">@csrf<textarea name="message" rows="3" required placeholder="Ответ слушателю"></textarea><button class="btn" style="margin-top:10px">Отправить ответ</button></form>
-</div>
+@if(($legacy[$enrollment->user_id]??collect())->isNotEmpty())<details style="margin-bottom:14px"><summary>Архив старого чата ({{($legacy[$enrollment->user_id]??collect())->count()}})</summary><div style="max-height:260px;overflow:auto">@foreach($legacy[$enrollment->user_id] as $m)<div class="list-row"><div>{{$m->body}}</div><small>раздел #{{$m->legacy_scope_id}} · {{$m->occurred_at?->format('d.m.Y H:i')}} · {{(($m->meta['ku']??null)==1)?'куратор':'слушатель'}}</small></div>@endforeach</div></details>@endif
+<div style="max-height:360px;overflow:auto;margin-bottom:14px">@forelse($messages->get($enrollment->id,collect()) as $m)<div style="margin:8px 0;padding:10px 12px;border-radius:10px;background:{{ $m->from_curator?'#eef4ff':'#f4f7fb' }}"><strong>{{ $m->from_curator?'Вы':$enrollment->user->full_name }}</strong><div>{{ $m->message }}</div><small>{{ $m->created_at->format('d.m.Y H:i') }}</small></div>@empty<p class="empty">Новых Laravel-сообщений пока нет.</p>@endforelse</div>
+<form method="post" action="{{ route('curator.messages.send',$enrollment) }}">@csrf<textarea name="message" rows="3" required placeholder="Ответ слушателю"></textarea><button class="btn" style="margin-top:10px">Отправить ответ</button></form></div>
 @empty<div class="panel empty">Нет назначенных слушателей.</div>@endforelse
 @endsection
