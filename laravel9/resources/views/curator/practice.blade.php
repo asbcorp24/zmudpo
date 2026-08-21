@@ -1,0 +1,3 @@
+@extends('layouts.app') @section('title','Курирование практик') @section('content') @include('curator._legacy_nav')
+<div class="page-heading"><div><h1>Курирование практик</h1><p>Журнал практических работ закреплённых слушателей.</p></div><a class="btn" href="{{route('curator.review')}}">Перейти к проверке</a></div>
+<div class="panel"><div class="table-responsive"><table class="table"><tr><th>Дата</th><th>Слушатель</th><th>Задание</th><th>Комментарий</th><th>Статус</th></tr>@foreach($items as $s)<tr><td>{{$s->submitted_at?->format('d.m.Y H:i')}}</td><td>{{$s->user?->full_name}}</td><td>{{$s->practiceAssignment?->title}}</td><td>{{$s->comment}}</td><td>{{$s->status}}</td></tr>@endforeach</table></div>{{$items->links()}}</div>@endsection
