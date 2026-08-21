@@ -12,10 +12,12 @@ Route::middleware('auth')->group(function(){
 
     Route::get('/final-works',[FinalWorkController::class,'index'])->name('final-works.index');
     Route::post('/final-works/{enrollment}',[FinalWorkController::class,'submit'])->name('final-works.submit');
+    Route::get('/final-work-files/{finalWork}',[FinalWorkController::class,'download'])->name('final-works.download');
 
     Route::get('/history',[HistoryController::class,'index'])->name('history.index');
     Route::get('/documents/{document}/download',[DocumentController::class,'download'])->name('documents.download');
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
+    Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
 });
