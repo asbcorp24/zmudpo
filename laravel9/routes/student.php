@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{LearningController,PracticeController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
 use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
+use App\Http\Controllers\Admin\QuizNotificationController;
 
 Route::middleware('auth')->group(function(){
     Route::get('/programs/{enrollment}',[StudentProgramController::class,'show'])->name('programs.show');
@@ -40,3 +41,6 @@ Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,adm
     Route::get('/messages',[CuratorMessageController::class,'index'])->name('messages');
     Route::post('/messages/{enrollment}',[CuratorMessageController::class,'send'])->name('messages.send');
 });
+
+Route::post('/admin/quizzes/{assignment}/notify-open',[QuizNotificationController::class,'send'])
+    ->middleware(['auth','role:admin'])->name('admin.quizzes.notify');
