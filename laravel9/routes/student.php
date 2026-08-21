@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{LearningController,PracticeController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController};
+use App\Http\Controllers\{LearningController,PracticeController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
+use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
 
 Route::middleware('auth')->group(function(){
     Route::get('/programs/{enrollment}',[StudentProgramController::class,'show'])->name('programs.show');
@@ -20,4 +21,21 @@ Route::middleware('auth')->group(function(){
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
+
+    Route::prefix('services')->name('student.')->group(function(){
+        Route::get('/messages',[StudentServicesController::class,'messages'])->name('messages');
+        Route::post('/messages/{enrollment}',[StudentServicesController::class,'sendMessage'])->name('messages.send');
+        Route::get('/schedule',[StudentServicesController::class,'schedule'])->name('schedule');
+        Route::post('/schedule/{slot}',[StudentServicesController::class,'bookSlot'])->name('schedule.book');
+        Route::delete('/schedule/{slot}',[StudentServicesController::class,'cancelSlot'])->name('schedule.cancel');
+        Route::get('/surveys',[StudentServicesController::class,'surveys'])->name('surveys');
+        Route::post('/surveys/{survey}',[StudentServicesController::class,'submitSurvey'])->name('surveys.submit');
+        Route::get('/resources',[StudentServicesController::class,'resources'])->name('resources');
+        Route::get('/resources/{resource}/download',[StudentServicesController::class,'downloadResource'])->name('resources.download');
+    });
+});
+
+Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,admin'])->group(function(){
+    Route::get('/messages',[CuratorMessageController::class,'index'])->name('messages');
+    Route::post('/messages/{enrollment}',[CuratorMessageController::class,'send'])->name('messages.send');
 });
