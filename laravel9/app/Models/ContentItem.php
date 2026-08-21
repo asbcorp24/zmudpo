@@ -1,4 +1,3 @@
 <?php
-namespace App\Models;
-use Illuminate\Database\Eloquent\Model;
-class ContentItem extends Model { protected $fillable=['legacy_id','learning_section_id','title','type','body','file_path','external_url','position','is_required']; protected $casts=['is_required'=>'boolean']; }
+namespace App\Models;use Illuminate\Database\Eloquent\Model;
+class ContentItem extends Model {protected $guarded=[];protected $casts=['is_required'=>'boolean','settings'=>'array','available_from'=>'datetime','available_until'=>'datetime'];public function section(){return $this->belongsTo(LearningSection::class,'learning_section_id');}}

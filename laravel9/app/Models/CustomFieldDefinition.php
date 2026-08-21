@@ -1,0 +1,1 @@
+<?php namespace App\Models; class CustomFieldDefinition extends LegacyAdminModel {}

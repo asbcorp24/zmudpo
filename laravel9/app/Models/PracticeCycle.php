@@ -1,0 +1,1 @@
+<?php namespace App\Models; class PracticeCycle extends LegacyAdminModel {public function tasks(){return $this->hasMany(PracticeTask::class);}public function programs(){return $this->belongsToMany(Program::class,'practice_cycle_program')->withPivot('starts_at','ends_at')->withTimestamps();}}

@@ -1,0 +1,1 @@
+<?php namespace App\Models; class AuditLog extends LegacyAdminModel {protected $casts=['before'=>'array','after'=>'array'];}
