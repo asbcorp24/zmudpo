@@ -12,7 +12,7 @@ class AuthController extends Controller
  {
   $programs=Program::with('type')->where('is_active',true)->orderBy('title')->get();
   $typeIds=$programs->pluck('program_type_id')->filter()->unique()->values();
-  $programTypes=ProgramType::whereIn('id',$typeIds)->orderBy('legacy_id')->get();
+  $programTypes=ProgramType::where('is_active',true)->whereIn('id',$typeIds)->orderBy('legacy_id')->get();
   $selectedProgram=null;
   if($request->filled('program'))$selectedProgram=Program::with('type')->where('is_active',true)->find($request->integer('program'));
   elseif($request->filled('spec'))$selectedProgram=Program::with('type')->where('is_active',true)->where('legacy_id',$request->integer('spec'))->first();
