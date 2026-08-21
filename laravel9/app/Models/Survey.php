@@ -1,0 +1,1 @@
+<?php namespace App\Models; class Survey extends LegacyAdminModel {public function fields(){return $this->hasMany(SurveyField::class);}}

@@ -1,0 +1,1 @@
+<?php namespace App\Models; class InstructorProgram extends LegacyAdminModel {protected $table='instructor_program';public function instructor(){return $this->belongsTo(Instructor::class);}public function program(){return $this->belongsTo(Program::class);}public function slots(){return $this->hasMany(InstructorSlot::class);}}

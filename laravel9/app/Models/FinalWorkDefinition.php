@@ -1,0 +1,1 @@
+<?php namespace App\Models; class FinalWorkDefinition extends LegacyAdminModel {public function themes(){return $this->hasMany(FinalWorkTheme::class,'definition_id');}public function programs(){return $this->belongsToMany(Program::class,'final_work_program','definition_id','program_id');}}

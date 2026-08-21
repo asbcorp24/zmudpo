@@ -1,0 +1,1 @@
+<?php namespace App\Models; class ReferenceCatalog extends LegacyAdminModel {public function groups(){return $this->hasMany(ReferenceGroup::class,'catalog_id');}public function values(){return $this->hasMany(ReferenceValue::class,'catalog_id');}}

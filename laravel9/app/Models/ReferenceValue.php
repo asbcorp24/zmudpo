@@ -1,0 +1,1 @@
+<?php namespace App\Models; class ReferenceValue extends LegacyAdminModel {}

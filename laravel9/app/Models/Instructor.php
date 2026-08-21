@@ -1,0 +1,1 @@
+<?php namespace App\Models; class Instructor extends LegacyAdminModel {public function assignments(){return $this->hasMany(InstructorProgram::class);}}
