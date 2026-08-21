@@ -1,8 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{LearningController,PracticeController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
+use App\Http\Controllers\{LearningController,PracticeController,QuizController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
 use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
+use App\Http\Controllers\Admin\QuizNotificationController;
 
 Route::middleware('auth')->group(function(){
     Route::get('/programs/{enrollment}',[StudentProgramController::class,'show'])->name('programs.show');
@@ -17,8 +18,10 @@ Route::middleware('auth')->group(function(){
 
     Route::get('/history',[HistoryController::class,'index'])->name('history.index');
     Route::get('/documents/{document}/download',[DocumentController::class,'download'])->name('documents.download');
+    Route::get('/quiz-attempts/{attempt}/result',[QuizController::class,'result'])->name('quizzes.result');
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
+    Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
 
@@ -39,3 +42,6 @@ Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,adm
     Route::get('/messages',[CuratorMessageController::class,'index'])->name('messages');
     Route::post('/messages/{enrollment}',[CuratorMessageController::class,'send'])->name('messages.send');
 });
+
+Route::post('/admin/quizzes/{assignment}/notify-open',[QuizNotificationController::class,'send'])
+    ->middleware(['auth','role:admin'])->name('admin.quizzes.notify');

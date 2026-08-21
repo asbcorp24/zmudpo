@@ -33,7 +33,12 @@ class StudentServicesController extends Controller
         $slotIds=$assignments->flatMap(fn($a)=>$a->slots->pluck('id'));
         $booked=DB::table('instructor_slot_user')->where('user_id',$request->user()->id)->pluck('slot_id')->all();
         $counts=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) as cnt')->whereIn('slot_id',$slotIds)->groupBy('slot_id')->pluck('cnt','slot_id');
-        return view('student-services.schedule',compact('assignments','booked','counts'));
+        $userCounts=[];
+        foreach($assignments as $assignment){
+            $ids=$assignment->slots->pluck('id');
+            $userCounts[$assignment->id]=$ids->isEmpty()?0:DB::table('instructor_slot_user')->where('user_id',$request->user()->id)->whereIn('slot_id',$ids)->count();
+        }
+        return view('student-services.schedule',compact('assignments','booked','counts','userCounts'));
     }
 
     public function bookSlot(Request $request, InstructorSlot $slot)
@@ -42,11 +47,16 @@ class StudentServicesController extends Controller
         $assignment=$slot->instructorProgram;
         abort_unless($assignment && $request->user()->enrollments()->where('program_id',$assignment->program_id)->where('status','active')->exists(),403);
         abort_if($slot->date && now()->gt($slot->date->endOfDay()),422,'Дата занятия уже прошла.');
-        DB::transaction(function() use($request,$slot){
+        DB::transaction(function() use($request,$slot,$assignment){
             $exists=DB::table('instructor_slot_user')->where('slot_id',$slot->id)->where('user_id',$request->user()->id)->exists();
             if($exists)return;
-            $count=DB::table('instructor_slot_user')->where('slot_id',$slot->id)->lockForUpdate()->count();
-            abort_if($slot->capacity && $count >= $slot->capacity,422,'Свободных мест нет.');
+            $slotCount=DB::table('instructor_slot_user')->where('slot_id',$slot->id)->lockForUpdate()->count();
+            abort_if($slot->capacity && $slotCount >= $slot->capacity,422,'Свободных мест нет.');
+            if($assignment->sessions_per_student){
+                $assignmentSlotIds=DB::table('instructor_slots')->where('instructor_program_id',$assignment->id)->pluck('id');
+                $used=DB::table('instructor_slot_user')->where('user_id',$request->user()->id)->whereIn('slot_id',$assignmentSlotIds)->lockForUpdate()->count();
+                abort_if($used >= $assignment->sessions_per_student,422,'Лимит занятий с этим преподавателем исчерпан.');
+            }
             DB::table('instructor_slot_user')->insert(['slot_id'=>$slot->id,'user_id'=>$request->user()->id,'created_at'=>now(),'updated_at'=>now()]);
         });
         return back()->with('ok','Запись на занятие сохранена.');
