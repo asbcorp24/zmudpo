@@ -5,6 +5,7 @@ use App\Http\Controllers\{LearningController,PracticeController,QuizController,S
 use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
 use App\Http\Controllers\Curator\ArchiveController as CuratorArchiveController;
 use App\Http\Controllers\Admin\QuizNotificationController;
+use App\Http\Controllers\Admin\ContentAdminController;
 
 Route::middleware('auth')->group(function(){
     Route::post('/courses/{program}/enroll',[PublicSiteController::class,'enroll'])->name('public.program.enroll');
@@ -25,6 +26,7 @@ Route::middleware('auth')->group(function(){
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
     Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
+    Route::get('/learning-content/{item}/package/{path?}',[LearningController::class,'package'])->where('path','.*')->name('learning.package');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
 
@@ -47,6 +49,21 @@ Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,adm
     Route::get('/legacy-logins',[CuratorArchiveController::class,'logins'])->name('legacy-logins');
     Route::get('/legacy-announcements',[CuratorArchiveController::class,'announcements'])->name('legacy-announcements');
     Route::post('/legacy-announcements',[CuratorArchiveController::class,'storeAnnouncement'])->name('legacy-announcements.store');
+});
+
+Route::prefix('admin/nmo')->name('admin.nmo.')->middleware(['auth','role:admin'])->group(function(){
+    Route::post('/sections',[ContentAdminController::class,'section'])->name('sections.store');
+    Route::put('/sections/{section}',[ContentAdminController::class,'updateSection'])->name('sections.update');
+    Route::delete('/sections/{section}',[ContentAdminController::class,'destroySection'])->name('sections.destroy');
+    Route::post('/sections/{section}/copy',[ContentAdminController::class,'copySection'])->name('sections.copy');
+    Route::post('/items',[ContentAdminController::class,'item'])->name('items.store');
+    Route::put('/items/{item}',[ContentAdminController::class,'update'])->name('items.update');
+    Route::delete('/items/{item}',[ContentAdminController::class,'destroyItem'])->name('items.destroy');
+    Route::post('/items/{item}/copy',[ContentAdminController::class,'copyItem'])->name('items.copy');
+    Route::post('/copy-items',[ContentAdminController::class,'copyItems'])->name('items.copy-many');
+    Route::post('/reorder',[ContentAdminController::class,'reorder'])->name('reorder');
+    Route::post('/defaults',[ContentAdminController::class,'addDefaults'])->name('defaults');
+    Route::get('/items/{item}/download/{which?}',[ContentAdminController::class,'adminDownload'])->name('items.download');
 });
 
 Route::post('/admin/quizzes/{assignment}/notify-open',[QuizNotificationController::class,'send'])
