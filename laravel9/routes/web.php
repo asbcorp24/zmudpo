@@ -16,8 +16,8 @@ Route::middleware('auth')->group(function(){
   Route::get('/students',[CuratorLegacy::class,'students'])->name('students');Route::get('/students/{enrollment}',[CuratorLegacy::class,'student'])->name('student');
   Route::get('/review',[AdminReview::class,'index'])->name('review');Route::patch('/review/submission/{submission}',[AdminReview::class,'submission'])->name('review.submission');Route::patch('/review/final/{finalWork}',[AdminReview::class,'finalWork'])->name('review.final');
   Route::get('/attendance',[CuratorLegacy::class,'attendance'])->name('attendance');Route::get('/practice',[CuratorLegacy::class,'practice'])->name('practice');Route::get('/files',[CuratorLegacy::class,'files'])->name('files');
-  Route::get('/content',[CuratorLegacy::class,'content'])->name('content');Route::patch('/content/{item}',[CuratorLegacy::class,'updateContent'])->name('content.update');
-  Route::get('/documents',[CuratorLegacy::class,'documents'])->name('documents');
+  Route::get('/content',[CuratorLegacy::class,'content'])->name('content');Route::post('/content/{section}',[CuratorLegacy::class,'storeContent'])->name('content.store');Route::patch('/content/{item}',[CuratorLegacy::class,'updateContent'])->name('content.update');
+  Route::get('/documents',[CuratorLegacy::class,'documents'])->name('documents');Route::get('/legacy-file/{record}',[CuratorLegacy::class,'downloadLegacy'])->name('legacy.download');
   Route::get('/announcements',[CuratorLegacy::class,'announcements'])->name('announcements');Route::post('/announcements',[CuratorLegacy::class,'storeAnnouncement'])->name('announcements.store');
   Route::get('/logins',[CuratorLegacy::class,'logins'])->name('logins');Route::get('/surveys',[CuratorLegacy::class,'surveys'])->name('surveys');
   Route::get('/statistics',[CuratorLegacy::class,'statistics'])->name('statistics');Route::get('/tables',[CuratorLegacy::class,'tables'])->name('tables');
