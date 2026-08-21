@@ -1,12 +1,16 @@
 <?php
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController,DashboardController,LearningController,QuizController,PracticeController,DocumentController,ForumController,PublicSiteController};
+use App\Http\Controllers\{AuthController,DashboardController,LearningController,QuizController,PracticeController,DocumentController,ForumController,PublicSiteController,CourseRegistrationController};
 use App\Http\Controllers\Admin\{DashboardController as AdminDashboard,ProgramController as AdminPrograms,UserController as AdminUsers,EnrollmentController as AdminEnrollments,SectionController as AdminSections,ReviewController as AdminReview,GroupController as AdminGroups,DocumentAdminController as AdminDocuments,AnnouncementController as AdminAnnouncements,LegacyAdminController,BulkUserController,ContentAdminController,ArchiveAdminController,PermissionController,QuizAdminController};
 use App\Http\Controllers\Curator\DashboardController as CuratorDashboard;
 use App\Http\Controllers\Curator\LegacyCabinetController as CuratorLegacy;
 
 Route::get('/',[PublicSiteController::class,'home'])->name('home');
 Route::get('/courses',[PublicSiteController::class,'programs'])->name('public.programs');
+Route::get('/courses/{program}/register',[CourseRegistrationController::class,'create'])->middleware('guest')->name('public.program.register');
+Route::post('/courses/{program}/register',[CourseRegistrationController::class,'store'])->middleware('guest')->name('public.program.register.store');
+Route::get('/registration/sent/{user}',[CourseRegistrationController::class,'sent'])->middleware('guest')->name('public.registration.sent');
+Route::get('/registration/verify/{user}',[CourseRegistrationController::class,'verify'])->middleware('guest')->name('public.registration.verify');
 Route::get('/courses/{program}',[PublicSiteController::class,'program'])->name('public.program');
 
 Route::middleware('guest')->group(function(){Route::get('/login',[AuthController::class,'showLogin'])->name('login');Route::post('/login',[AuthController::class,'login'])->name('login.perform');});
