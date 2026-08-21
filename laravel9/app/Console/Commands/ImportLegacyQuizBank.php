@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\File;
 
 class ImportLegacyQuizBank extends Command
 {
- protected $signature='legacy:import-quiz-bank {--dry-run} {--tests-dir=} {--answers-dir=}';
+ protected $signature='legacy:import-quiz-bank {--dry-run} {--tests-dir=} {--answers-dir=} {--force-reparse}';
  protected $description='Import tm_test metadata, archive legacy packages and normalize parseable questions/options';
 
  public function handle(LegacyQuizPackageParser $parser): int
@@ -20,10 +20,12 @@ class ImportLegacyQuizBank extends Command
   $answersDir=$this->option('answers-dir')?:base_path('../otv');
   $count=$db->table('tm_test')->count();
   $this->info("tm_test: {$count}; testy={$testsDir}; otv={$answersDir}");
+  if($this->option('force-reparse'))$this->warn('Включён --force-reparse: существующие нормализованные вопросы будут пересозданы из legacy-пакета.');
   if($this->option('dry-run'))return self::SUCCESS;
 
-  $done=$parsed=$packages=$missing=0;
-  $db->table('tm_test')->orderBy('num')->chunkById(100,function($rows)use($parser,$testsDir,$answersDir,&$done,&$parsed,&$packages,&$missing){
+  $done=$parsed=$preserved=$packages=$missing=0;
+  $force=(bool)$this->option('force-reparse');
+  $db->table('tm_test')->orderBy('num')->chunkById(100,function($rows)use($parser,$testsDir,$answersDir,$force,&$done,&$parsed,&$preserved,&$packages,&$missing){
    foreach($rows as $r){
     $legacyId=(int)$r->num;
     $quiz=Quiz::updateOrCreate(['legacy_id'=>$legacyId],[
@@ -44,18 +46,27 @@ class ImportLegacyQuizBank extends Command
     $quiz->update(['legacy_archive_path'=>$archive,'legacy_answer_archive_path'=>$answerArchive,'import_status'=>$result['status'],'import_message'=>$result['message']]);
 
     if($result['status']==='parsed'){
-     DB::transaction(function()use($quiz,$result){
-      $quiz->questions()->delete();
-      foreach($result['questions'] as $qrow){
-       $q=QuizQuestion::create(['quiz_id'=>$quiz->id,'legacy_id'=>null,'question'=>$qrow['question'],'type'=>$qrow['type']??'single','position'=>$qrow['position']??0,'points'=>$qrow['points']??1]);
-       foreach($qrow['options']??[] as $orow)QuizOption::create(['quiz_question_id'=>$q->id,'legacy_id'=>null,'text'=>$orow['text'],'is_correct'=>(bool)($orow['is_correct']??false),'position'=>$orow['position']??0]);
+     $hasQuestions=$quiz->questions()->exists();
+     if($hasQuestions && !$force){
+      $quiz->update(['import_message'=>$result['message'].'; существующий нормализованный банк сохранён (для пересоздания используйте --force-reparse)']);
+      $preserved++;
+     } else {
+      if($hasQuestions && $force && $quiz->attempts()->whereNull('legacy_id')->exists()){
+       $this->warn("Тест legacy #{$legacyId}: пересоздание вопросов при наличии новых Laravel-попыток; сохранённые answers могут ссылаться на старые ID.");
       }
-     });$parsed++;
+      DB::transaction(function()use($quiz,$result){
+       $quiz->questions()->delete();
+       foreach($result['questions'] as $qrow){
+        $q=QuizQuestion::create(['quiz_id'=>$quiz->id,'legacy_id'=>null,'question'=>$qrow['question'],'type'=>$qrow['type']??'single','position'=>$qrow['position']??0,'points'=>$qrow['points']??1]);
+        foreach($qrow['options']??[] as $orow)QuizOption::create(['quiz_question_id'=>$q->id,'legacy_id'=>null,'text'=>$orow['text'],'is_correct'=>(bool)($orow['is_correct']??false),'position'=>$orow['position']??0]);
+       }
+      });$parsed++;
+     }
     } elseif($result['status']==='package_only')$packages++; else $missing++;
     $done++;
    }
   },'num');
-  $this->info("Карточек: {$done}; распознано в вопросы: {$parsed}; только legacy-пакет: {$packages}; отсутствует/ошибка: {$missing}");
+  $this->info("Карточек: {$done}; создан/пересоздан банк: {$parsed}; сохранён существующий банк: {$preserved}; только legacy-пакет: {$packages}; отсутствует/ошибка: {$missing}");
   return self::SUCCESS;
  }
 
