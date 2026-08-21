@@ -12,7 +12,7 @@
    <div class="card" style="box-shadow:none;border:1px solid #e6e9ef">
     <h3>{{ $definition->title }}</h3>
     @if($work)
-     <p><strong>Статус:</strong> {{ $work->status }} @if($work->submitted_at) · отправлено {{ $work->submitted_at->format('d.m.Y H:i') }} @endif</p>
+     <p><strong>Статус:</strong> {{ $work->status }} @if($work->submitted_at) · отправлено {{ $work->submitted_at->format('d.m.Y H:i') }} @endif @if($work->file_path) · <a href="{{ route('final-works.download',$work) }}">скачать файл</a>@endif</p>
      @if($work->review_comment)<div class="review-note"><strong>Комментарий проверяющего:</strong> {{ $work->review_comment }}</div>@endif
      @if(in_array($work->status,['accepted','passed']))<p class="ok">Работа принята.</p>@endif
     @endif
