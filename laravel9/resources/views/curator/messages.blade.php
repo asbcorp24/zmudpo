@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title','Сообщения слушателей')
 @section('content')
-<div class="page-heading"><div><h1>Сообщения слушателей</h1><p>Диалоги по назначенным вам программам.</p></div></div>
+@include('curator._legacy_nav')
+<div class="page-heading"><div><h1>Общение</h1><p>Диалоги по назначенным вам программам — аналог kurator_forum.php.</p></div></div>
 @forelse($enrollments as $enrollment)
 <div class="panel"><div class="panel-head"><div><h2>{{ $enrollment->user->full_name }}</h2><span>{{ $enrollment->program->title }}</span></div></div>
 <div style="max-height:360px;overflow:auto;margin-bottom:14px">
