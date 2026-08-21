@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{LearningController,PracticeController,QuizController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
+use App\Http\Controllers\{LearningController,PracticeController,QuizController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController,PublicSiteController};
 use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
 use App\Http\Controllers\Curator\ArchiveController as CuratorArchiveController;
 use App\Http\Controllers\Admin\QuizNotificationController;
 
 Route::middleware('auth')->group(function(){
+    Route::post('/courses/{program}/enroll',[PublicSiteController::class,'enroll'])->name('public.program.enroll');
+
     Route::get('/programs/{enrollment}',[StudentProgramController::class,'show'])->name('programs.show');
     Route::post('/programs/{enrollment}/complete',[StudentProgramController::class,'complete'])->name('programs.complete');
 
