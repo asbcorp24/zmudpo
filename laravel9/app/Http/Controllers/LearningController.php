@@ -39,7 +39,7 @@ class LearningController extends Controller {
   if(in_array($ext,['html','htm'],true))return response(Storage::get($item->file_path),200,['Content-Type'=>'text/html; charset=UTF-8','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
   return Storage::download($item->file_path);
  }
- public function package(Request $request,ContentItem $item,?string $path=null,LearningAccessService $access){
+ public function package(Request $request,ContentItem $item,LearningAccessService $access,?string $path=null){
   $item->load('section');$this->authorizeItem($request,$item,$access);
   $settings=$item->settings?:[];$root=$settings['package_root']??null;abort_unless($root,404);
   $relative=$path?:ltrim(str_replace($root.'/','',(string)$item->file_path),'/');
