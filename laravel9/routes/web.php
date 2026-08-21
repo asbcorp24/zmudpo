@@ -6,8 +6,8 @@ use App\Http\Controllers\Curator\DashboardController as CuratorDashboard;
 use App\Http\Controllers\Curator\LegacyCabinetController as CuratorLegacy;
 
 Route::get('/',[PublicSiteController::class,'home'])->name('home');
-Route::get('/programs',[PublicSiteController::class,'programs'])->name('public.programs');
-Route::get('/programs/{program}',[PublicSiteController::class,'program'])->name('public.program');
+Route::get('/courses',[PublicSiteController::class,'programs'])->name('public.programs');
+Route::get('/courses/{program}',[PublicSiteController::class,'program'])->name('public.program');
 
 Route::middleware('guest')->group(function(){Route::get('/login',[AuthController::class,'showLogin'])->name('login');Route::post('/login',[AuthController::class,'login'])->name('login.perform');});
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth')->name('logout');
