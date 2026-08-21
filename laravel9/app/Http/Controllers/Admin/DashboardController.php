@@ -1,7 +1,4 @@
 <?php
 namespace App\Http\Controllers\Admin;
-use App\Http\Controllers\Controller;
-use App\Models\Program;
-use App\Models\Quiz;
-use App\Models\User;
-class DashboardController extends Controller { public function __invoke(){return view('admin.dashboard',['users'=>User::count(),'students'=>User::where('role','student')->count(),'programs'=>Program::count(),'quizzes'=>Quiz::count()]);} }
+use App\Http\Controllers\Controller; use App\Models\{User,Program,Enrollment,Submission,FinalWork,EducationDocument,LoginEvent};
+class DashboardController extends Controller { public function index(){return view('admin.dashboard',['users'=>User::count(),'programs'=>Program::where('is_active',1)->count(),'active'=>Enrollment::where('status','active')->count(),'completed'=>Enrollment::where('status','completed')->count(),'review'=>Submission::where('status','submitted')->count()+FinalWork::where('status','submitted')->count(),'documents'=>EducationDocument::count(),'recent'=>LoginEvent::with('user')->latest('logged_in_at')->limit(10)->get()]);} }

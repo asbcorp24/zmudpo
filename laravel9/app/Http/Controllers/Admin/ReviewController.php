@@ -1,0 +1,8 @@
+<?php
+namespace App\Http\Controllers\Admin;
+use App\Http\Controllers\Controller; use App\Models\{Submission,FinalWork}; use App\Services\ProgramProgressService; use Illuminate\Http\Request;
+class ReviewController extends Controller {
+ public function index(){return view('admin.review.index',['submissions'=>Submission::with('user','practiceAssignment')->where('status','submitted')->latest()->get(),'finalWorks'=>FinalWork::with('user','enrollment.program')->where('status','submitted')->latest()->get()]);}
+ public function submission(Request $r,Submission $submission,ProgramProgressService $progress){$d=$r->validate(['status'=>'required|in:accepted,rejected,revision','score'=>'nullable|numeric','review_comment'=>'nullable|string']);$submission->update($d+['reviewed_by'=>auth()->id(),'reviewed_at'=>now()]);$e=\App\Models\Enrollment::where('user_id',$submission->user_id)->where('program_id',$submission->practiceAssignment->program_id)->first();if($e)$progress->calculate($e);return back()->with('ok','Практическая работа проверена');}
+ public function finalWork(Request $r,FinalWork $finalWork,ProgramProgressService $progress){$d=$r->validate(['status'=>'required|in:accepted,rejected,revision','score'=>'nullable|numeric','antiplagiarism_percent'=>'nullable|integer|min:0|max:100','review_comment'=>'nullable|string']);$finalWork->update($d+['reviewed_by'=>auth()->id(),'reviewed_at'=>now()]);$progress->calculate($finalWork->enrollment);return back()->with('ok','Итоговая работа проверена');}
+}
