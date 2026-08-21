@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{LearningController,PracticeController,QuizController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
 use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
+use App\Http\Controllers\Curator\ArchiveController as CuratorArchiveController;
 use App\Http\Controllers\Admin\QuizNotificationController;
 
 Route::middleware('auth')->group(function(){
@@ -41,6 +42,9 @@ Route::middleware('auth')->group(function(){
 Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,admin'])->group(function(){
     Route::get('/messages',[CuratorMessageController::class,'index'])->name('messages');
     Route::post('/messages/{enrollment}',[CuratorMessageController::class,'send'])->name('messages.send');
+    Route::get('/legacy-logins',[CuratorArchiveController::class,'logins'])->name('legacy-logins');
+    Route::get('/legacy-announcements',[CuratorArchiveController::class,'announcements'])->name('legacy-announcements');
+    Route::post('/legacy-announcements',[CuratorArchiveController::class,'storeAnnouncement'])->name('legacy-announcements.store');
 });
 
 Route::post('/admin/quizzes/{assignment}/notify-open',[QuizNotificationController::class,'send'])
