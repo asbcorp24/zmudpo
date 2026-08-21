@@ -15,14 +15,13 @@ class LearningSectionProgress extends Model
    if(!$legacy->user_id||!$legacy->learning_section_id)return;
    $progress=SectionProgress::firstOrNew(['user_id'=>$legacy->user_id,'learning_section_id'=>$legacy->learning_section_id]);
    $meta=(array)($progress->meta??[]);
+   // Legacy data may restore a completion that would otherwise be lost during migration,
+   // but a stale incomplete legacy row must never undo progress made in Laravel later.
    if($legacy->completed){
     $progress->progress_percent=100;
     if(!$progress->completed_at)$progress->completed_at=$legacy->legacy_date?:now();
-   }elseif(!$progress->exists||($meta['legacy_nmo']??false)){
-    // Only undo completion when this record itself was previously sourced from legacy NMO.
-    // A modern manually completed section must never be downgraded by an old incomplete legacy row.
+   }elseif(!$progress->exists){
     $progress->progress_percent=0;
-    $progress->completed_at=null;
    }
    $meta['legacy_nmo']=true;$meta['legacy_nmo_progress_id']=$legacy->id;
    $progress->meta=$meta;$progress->save();
