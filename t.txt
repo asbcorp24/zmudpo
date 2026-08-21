@@ -1,0 +1,1 @@
+DELETE FROM  `tm_user_test` WHERE  `tm_user_test`.`test` = NULL AND    `tm_user_test`.`inn` = NULLINSERT INTO tm_user_test (inn,test,res,dat,otv_col) VALUES (NULL,NULL,0,'2018-02-15',1)

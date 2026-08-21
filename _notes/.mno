@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="PageAccessControlMethod" value="useAccessList" />
+	<infoitem key="MM_URL1" value="spec" />
+	<infoitem key="MM_URL_Count" value="1" />
+	<infoitem key="MM_Session1" value="MM_Username" />
+	<infoitem key="MM_Session_Count" value="2" />
+	<infoitem key="MM_Session2" value="MM_UserGroup" />
+</info>

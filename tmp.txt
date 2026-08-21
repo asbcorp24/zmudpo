@@ -1,0 +1,17 @@
+2020-3-2 7:12:37Array
+(
+    [out_summ] => 150
+    [OutSum] => 150
+    [inv_id] => 2162
+    [InvId] => 2162
+    [crc] => 001D1E5C9D9A2797894AFFA6CF06231E
+    [SignatureValue] => 001D1E5C9D9A2797894AFFA6CF06231E
+    [PaymentMethod] => BankCard
+    [IncSum] => 150
+    [IncCurrLabel] => BankCardPSR
+    [IsTest] => 1
+    [EMail] => 
+    [Fee] => 0.0
+    [Shp_Id] => 166
+)
+6070EB4945A3232FFDF0527DE85A8C93166INSERT INTO `tm_nmo_user_media_opl` (`num`, `user`, `media_razd`, `value`, `dat`) VALUES (NULL, 2162, 166, 1, '2020-3-2 7:12:37')166166-1

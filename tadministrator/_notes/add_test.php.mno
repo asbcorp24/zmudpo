@@ -1,0 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="UD_testy" value="name:num;datatype:int,name:inn;datatype:int,name:path;datatype:string,name:dat;datatype:date,name:nazv;datatype:string,name:img;datatype:string,name:col_v;datatype:int,name:tex;datatype:string" />
+</info>

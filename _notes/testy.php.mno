@@ -1,0 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="UD_test" value="name:activ;datatype:int,name:votv_col;datatype:int,name:inn;datatype:int,name:inn;datatype:int,name:nazvanie;datatype:string,name:img;datatype:string,name:nazv;datatype:string,name:tex;datatype:string,name:path;datatype:string,name:dat;datatype:date,name:otv_col;datatype:int,name:col_v;datatype:int,name:num;datatype:int,name:res;datatype:int" />
+</info>

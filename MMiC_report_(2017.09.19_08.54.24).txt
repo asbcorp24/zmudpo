@@ -1,0 +1,20 @@
+Following files are modified
+- - - - - - - - - - -
+F:/OpenServer/domains/testmed.ru/administrator/add_spec.php
+F:/OpenServer/domains/testmed.ru/administrator/add_spec_edit.php
+F:/OpenServer/domains/testmed.ru/administrator/add_spec_test.php
+F:/OpenServer/domains/testmed.ru/administrator/add_spec_user.php
+F:/OpenServer/domains/testmed.ru/administrator/add_test.php
+F:/OpenServer/domains/testmed.ru/administrator/Connections/testmed.php
+F:/OpenServer/domains/testmed.ru/administrator/index.php
+F:/OpenServer/domains/testmed.ru/administrator/spec_otch.php
+F:/OpenServer/domains/testmed.ru/administrator/_mmServerScripts/mysql.php
+F:/OpenServer/domains/testmed.ru/ad_test_add.php
+F:/OpenServer/domains/testmed.ru/Connections/testmed.php
+F:/OpenServer/domains/testmed.ru/Connections/testy.php
+F:/OpenServer/domains/testmed.ru/header.php
+F:/OpenServer/domains/testmed.ru/index.php
+F:/OpenServer/domains/testmed.ru/login.php
+F:/OpenServer/domains/testmed.ru/res_test.php
+F:/OpenServer/domains/testmed.ru/testy.php
+F:/OpenServer/domains/testmed.ru/_mmServerScripts/mysql.php

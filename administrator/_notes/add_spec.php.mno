@@ -1,0 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="UD_spec" value="name:num;datatype:int,name:nazv;datatype:string,name:dat;datatype:date,name:img;datatype:string,name:actiiv;datatype:int" />
+</info>
