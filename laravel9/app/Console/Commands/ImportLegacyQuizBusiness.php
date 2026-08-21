@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\DB;
 class ImportLegacyQuizBusiness extends Command
 {
     protected $signature='legacy:import-quiz-business {--dry-run}';
-    protected $description='Import legacy test assignments/results without importing the question bank';
+    protected $description='Import legacy test assignments/results using already imported quiz bank metadata';
 
     public function handle(): int
     {
         $db=DB::connection('legacy');$schema=$db->getSchemaBuilder();
         foreach(['tm_spec_test','tm_user_test'] as $t)$this->line(($schema->hasTable($t)?'[+] ':'[-] ').$t);
-        $this->info('tm_test и содержимое вопросов/ответов не импортируются. Для связи ожидается quizzes.legacy_id = tm_test.num.');
+        $this->info('Для связи ожидается quizzes.legacy_id = tm_test.num. Рекомендуется сначала выполнить legacy:import-quiz-bank.');
         if($this->option('dry-run'))return self::SUCCESS;
         if(!$schema->hasTable('tm_spec_test'))return self::FAILURE;
 
@@ -29,7 +29,13 @@ class ImportLegacyQuizBusiness extends Command
 
         if($schema->hasTable('tm_user_test')){
             $users=User::whereNotNull('legacy_id')->pluck('id','legacy_id');$assignments=QuizAssignment::whereNotNull('legacy_id')->pluck('id','legacy_id');
-            $db->table('tm_user_test')->orderBy('num')->chunkById(500,function($rows)use($users,$assignments){foreach($rows as $r){$uid=$users[(int)$r->inn]??null;$aid=$assignments[(int)$r->test]??null;if(!$uid||!$aid)continue;$a=QuizAssignment::find($aid);$quiz=Quiz::find($a->quiz_id);$max=max(1,(int)($quiz->questions()->count()?:100));$percent=min(100,round(((float)$r->res/$max)*100,2));QuizAttempt::updateOrCreate(['legacy_id'=>(int)$r->num],['quiz_id'=>$a->quiz_id,'quiz_assignment_id'=>$aid,'user_id'=>$uid,'score'=>(float)$r->res,'percent'=>$percent,'passed'=>$percent>=$a->pass_percent,'finished_at'=>now()]);}},'num');
+            $db->table('tm_user_test')->orderBy('num')->chunkById(500,function($rows)use($users,$assignments){foreach($rows as $r){
+                $uid=$users[(int)$r->inn]??null;$aid=$assignments[(int)$r->test]??null;if(!$uid||!$aid)continue;
+                $a=QuizAssignment::find($aid);$quiz=Quiz::find($a->quiz_id);
+                $max=max(1,(int)($quiz->legacy_question_count ?: $quiz->questions()->count() ?: 100));
+                $percent=min(100,round(((float)$r->res/$max)*100,2));
+                QuizAttempt::updateOrCreate(['legacy_id'=>(int)$r->num],['quiz_id'=>$a->quiz_id,'quiz_assignment_id'=>$aid,'user_id'=>$uid,'score'=>(float)$r->res,'percent'=>$percent,'passed'=>$percent>=$a->pass_percent,'finished_at'=>now()]);
+            }},'num');
         }
         return self::SUCCESS;
     }
