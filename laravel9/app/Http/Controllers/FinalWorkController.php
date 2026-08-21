@@ -12,7 +12,10 @@ class FinalWorkController extends Controller
     {
         $enrollments=$request->user()->enrollments()->with('program')->whereIn('status',['active','completed'])->get();
         $programIds=$enrollments->pluck('program_id');
-        $definitions=FinalWorkDefinition::with(['themes'=>fn($q)=>$q->where('is_active',true)])
+        $definitions=FinalWorkDefinition::with([
+                'programs:id,title',
+                'themes'=>fn($q)=>$q->where('is_active',true),
+            ])
             ->where('is_active',true)
             ->whereHas('programs',fn($q)=>$q->whereIn('programs.id',$programIds))
             ->get();
