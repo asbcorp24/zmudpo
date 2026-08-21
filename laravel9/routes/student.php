@@ -19,6 +19,7 @@ Route::middleware('auth')->group(function(){
     Route::get('/documents/{document}/download',[DocumentController::class,'download'])->name('documents.download');
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
+    Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
 
