@@ -35,6 +35,8 @@ class LearningController extends Controller {
  public function download(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section');$this->authorizeItem($request,$item,$access);
   abort_unless($item->file_path && Storage::exists($item->file_path),404);
+  $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
+  if(in_array($ext,['html','htm'],true))return response(Storage::get($item->file_path),200,['Content-Type'=>'text/html; charset=UTF-8','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
   return Storage::download($item->file_path);
  }
  public function package(Request $request,ContentItem $item,?string $path=null,LearningAccessService $access){
