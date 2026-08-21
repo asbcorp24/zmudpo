@@ -3,7 +3,7 @@
 @section('content')
 <div class="page-heading"><div><h1>Итоговые работы</h1><p>Выберите тему, загрузите работу и отслеживайте результат проверки.</p></div></div>
 @foreach($enrollments as $enrollment)
- @php($programDefinitions=$definitions->filter(fn($d)=>$d->programs()->where('programs.id',$enrollment->program_id)->exists()))
+ @php($programDefinitions=$definitions->filter(fn($d)=>$d->programs->contains('id',$enrollment->program_id)))
  @if($programDefinitions->isNotEmpty())
  <div class="panel">
   <div class="panel-head"><h2>{{ $enrollment->program->title }}</h2><span class="status {{ $enrollment->status }}">{{ $enrollment->status }}</span></div>
@@ -19,7 +19,7 @@
     @if($enrollment->status==='active' && !($work && in_array($work->status,['accepted','passed'])))
     <form method="post" enctype="multipart/form-data" action="{{ route('final-works.submit',$enrollment) }}">@csrf
      <input type="hidden" name="definition_id" value="{{ $definition->id }}">
-     @if($definition->themes->isNotEmpty())<label>Тема</label><select name="theme_id"><option value="">Своя тема</option>@foreach($definition->themes as $theme)<option value="{{ $theme->id }}">{{ $theme->title }}</option>@endforeach</select>@endif
+     @if($definition->themes->isNotEmpty())<label>Тема</label><select name="theme_id"><option value="">Своя тема</option>@foreach($definition->themes as $theme)<option value="{{ $theme->id }}" @selected(old('theme_id',$work?->final_work_theme_id)==$theme->id)>{{ $theme->title }}</option>@endforeach</select>@endif
      <label>Название работы</label><input name="title" value="{{ old('title',$work?->title) }}" placeholder="Если не указано, используется выбранная тема">
      <label>Файл</label><input type="file" name="file" accept=".pdf,.doc,.docx,.odt,.rtf" required>
      <label>Комментарий</label><textarea name="comment" rows="3">{{ old('comment',$work?->comment) }}</textarea>
