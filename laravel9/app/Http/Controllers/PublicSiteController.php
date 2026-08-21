@@ -8,12 +8,13 @@ class PublicSiteController extends Controller
 {
  public function home()
  {
+  $programCount=Program::where('is_active',true)->count();
   $featured=Program::where('is_active',true)->where(function($q){$q->where('is_featured_public',true)->orWhere('featured',true);})->orderByDesc('starts_at')->limit(6)->get();
   if($featured->isEmpty())$featured=Program::where('is_active',true)->orderByDesc('starts_at')->limit(6)->get();
   $news=News::where('is_active',true)->orderByDesc('published_at')->limit(5)->get();
   $testimonials=Testimonial::where('is_active',true)->orderByDesc('dated_at')->limit(6)->get();
   $categories=Program::where('is_active',true)->whereNotNull('category')->selectRaw('category,count(*) total')->groupBy('category')->orderByDesc('total')->limit(8)->get();
-  return view('public.home',compact('featured','news','testimonials','categories'));
+  return view('public.home',compact('featured','news','testimonials','categories','programCount'));
  }
 
  public function programs(Request $request)
@@ -31,7 +32,7 @@ class PublicSiteController extends Controller
  {
   abort_unless($program->is_active,404);
   $program->load(['sections'=>fn($q)=>$q->where('is_active',true)]);
-  $related=Program::where('is_active',true)->whereKeyNot($program->id)->when($program->category,fn($q)=>$q->where('category',$program->category))->limit(3)->get();
+  $related=Program::where('is_active',true)->where('id','<>',$program->id)->when($program->category,fn($q)=>$q->where('category',$program->category))->limit(3)->get();
   return view('public.program',compact('program','related'));
  }
 }
