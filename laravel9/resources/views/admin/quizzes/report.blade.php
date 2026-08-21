@@ -1,0 +1,6 @@
+@extends('layouts.app')
+@section('title','Отчёт по тестированию')
+@section('content')
+<div class="card"><form method="get"><label>Программа</label><select name="program_id" onchange="this.form.submit()"><option value="0">Выберите программу</option>@foreach($programs as $p)<option value="{{$p->id}}" @selected($programId==$p->id)>{{$p->title}}</option>@endforeach</select></form></div>
+@if($programId)<div class="card" style="overflow:auto"><table><tr><th>Слушатель</th>@foreach($assignments as $a)<th>{{$a->title}}</th>@endforeach<th>Средний %</th></tr>@foreach($users as $u)@php($vals=[])<tr><td>{{$u->full_name}}</td>@foreach($assignments as $a)@php($set=$attempts->get($u->id.':'.$a->id,collect())) @php($best=$set->sortByDesc('percent')->first())<td>@if($best){{$best->percent}}%<br><small>{{$best->passed?'зачёт':'не зачёт'}}, попыток {{$set->count()}}</small>@php($vals[]=(float)$best->percent)@else — @endif</td>@endforeach<td>{{count($vals)?round(array_sum($vals)/count($vals),1):'—'}}</td></tr>@endforeach</table></div>@endif
+@endsection
