@@ -1,4 +1,4 @@
 <?php
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
-class Quiz extends Model { protected $fillable=['legacy_id','program_id','learning_section_id','title','description','pass_percent','attempt_limit','is_active']; protected $casts=['is_active'=>'boolean']; public function questions(){return $this->hasMany(QuizQuestion::class)->orderBy('position');} }
+class Quiz extends Model {protected $guarded=[]; protected $casts=['is_active'=>'boolean','is_required'=>'boolean']; public function program(){return $this->belongsTo(Program::class);} public function learningSection(){return $this->belongsTo(LearningSection::class);} public function questions(){return $this->hasMany(QuizQuestion::class)->orderBy('position');} public function attempts(){return $this->hasMany(QuizAttempt::class);} }

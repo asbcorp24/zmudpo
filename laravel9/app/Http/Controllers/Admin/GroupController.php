@@ -1,0 +1,4 @@
+<?php
+namespace App\Http\Controllers\Admin;
+use App\Http\Controllers\Controller; use App\Models\Group; use Illuminate\Http\Request;
+class GroupController extends Controller { public function index(){return view('admin.groups.index',['items'=>Group::withCount('enrollments')->orderBy('name')->paginate(50)]);} public function store(Request $r){Group::create($r->validate(['name'=>'required|max:255']));return back()->with('ok','Группа создана');} public function update(Request $r,Group $group){$group->update($r->validate(['name'=>'required|max:255']));return back()->with('ok','Группа сохранена');} public function destroy(Group $group){if($group->enrollments()->exists())return back()->withErrors(['group'=>'Группа используется в назначениях.']);$group->delete();return back()->with('ok','Группа удалена');} }

@@ -1,0 +1,15 @@
+<?php
+namespace App\Console\Commands;
+use App\Models\{User,Program,Enrollment,LoginEvent,ArchiveRecord,FinalWork};
+use Illuminate\Console\Command; use Illuminate\Support\Facades\DB; use Illuminate\Support\Facades\Schema;
+class ImportLegacyBusiness extends Command {
+ protected $signature='legacy:import-business {--dry-run : Only inspect available legacy tables}'; protected $description='Import legacy business data without importing the question/test bank';
+ public function handle(): int { $db=DB::connection('legacy');$schema=$db->getSchemaBuilder();$wanted=['tm_login_dat','tm_chat_kurator','tm_irab_stud','tm_arh_spec','tm_arh_ball','tm_arh_diplom','tm_nmo_razd_user','tm_nmo_razd_user_arh','tm_user_pract','tm_docs','tm_news'];$this->info('Банк тестов tm_test/tm_spec_test/вопросы/ответы намеренно пропускается.');foreach($wanted as $t)$this->line(($schema->hasTable($t)?'[+] ':'[-] ').$t);if($this->option('dry-run'))return self::SUCCESS;
+  $users=User::whereNotNull('legacy_id')->pluck('id','legacy_id');$programs=Program::whereNotNull('legacy_id')->pluck('id','legacy_id');
+  if($schema->hasTable('tm_login_dat')){$db->table('tm_login_dat')->orderBy('num')->chunkById(500,function($rows)use($users){foreach($rows as $r)LoginEvent::updateOrCreate(['legacy_id'=>$r->num],['user_id'=>$users[(int)$r->user]??null,'logged_in_at'=>$r->dat?:now(),'note'=>$r->dop??null]);},'num');}
+  if($schema->hasTable('tm_irab_stud')){$db->table('tm_irab_stud')->orderBy('num')->chunkById(300,function($rows)use($users){foreach($rows as $r){$uid=$users[(int)($r->student??0)]??null;if(!$uid)continue;$e=Enrollment::where('user_id',$uid)->latest()->first();if(!$e)continue;FinalWork::updateOrCreate(['legacy_id'=>$r->num],['enrollment_id'=>$e->id,'user_id'=>$uid,'file_path'=>$r->path??null,'antiplagiarism_percent'=>isset($r->antiplagiat)?(int)$r->antiplagiat:null,'score'=>$r->result??null,'comment'=>$r->comment??null,'status'=>isset($r->result)&&$r->result!==null?'accepted':'submitted','submitted_at'=>$r->path?now():null]);}},'num');}
+  if($schema->hasTable('tm_arh_spec')){$db->table('tm_arh_spec')->orderBy('id')->chunkById(500,function($rows)use($users){foreach($rows as $r){$uid=$users[(int)($r->num??0)]??null;ArchiveRecord::updateOrCreate(['legacy_id'=>$r->id,'type'=>'program'],['user_id'=>$uid,'title'=>$r->naz??($r->specs??null),'started_at'=>$r->din??null,'ended_at'=>$r->dout??null,'data'=>['hours'=>$r->chas??null,'year'=>$r->god??null,'specialty'=>$r->specs??null]]);}},'id');}
+  if($schema->hasTable('tm_arh_ball')){$db->table('tm_arh_ball')->orderBy('id')->chunkById(500,function($rows)use($users){foreach($rows as $r)ArchiveRecord::updateOrCreate(['legacy_id'=>$r->id,'type'=>'score'],['user_id'=>$users[(int)($r->inn??0)]??null,'title'=>$r->nazv??null,'score'=>$r->ball??null,'data'=>['hours'=>$r->chas??null,'legacy_num'=>$r->num??null]]);},'id');}
+  $this->info('Импорт базовой бизнес-истории завершён. Остальные legacy-таблицы подключаются по мере точного сопоставления полей; тестовый банк не затрагивается.');return self::SUCCESS;
+ }
+}
