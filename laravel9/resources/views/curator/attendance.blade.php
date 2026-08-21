@@ -1,0 +1,3 @@
+@extends('layouts.app') @section('title','Посещения сайта') @section('content') @include('curator._legacy_nav')
+<div class="page-heading"><div><h1>Посещения сайта</h1><p>Аналог kurator_pos.php: последний вход и история посещений закреплённых слушателей.</p></div></div>
+<div class="panel"><div class="table-responsive"><table class="table"><tr><th>Группа</th><th>ФИО</th><th>Программа</th><th>Входы</th></tr>@foreach($enrollments as $e)<tr><td>{{$e->group?->name??'—'}}</td><td><a href="{{route('curator.student',$e)}}">{{$e->user?->full_name}}</a></td><td>{{$e->program?->title}}</td><td>@forelse(($logins[$e->user_id]??collect())->take(20) as $l)<span class="badge-soft">{{$l->logged_in_at}}</span> @empty — @endforelse</td></tr>@endforeach</table></div></div>@endsection
