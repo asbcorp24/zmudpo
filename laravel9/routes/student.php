@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{LearningController,PracticeController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
+use App\Http\Controllers\{LearningController,PracticeController,QuizController,StudentProgramController,ProfileController,FinalWorkController,HistoryController,DocumentController,StudentServicesController};
 use App\Http\Controllers\Curator\MessageController as CuratorMessageController;
 use App\Http\Controllers\Admin\QuizNotificationController;
 
@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function(){
 
     Route::get('/history',[HistoryController::class,'index'])->name('history.index');
     Route::get('/documents/{document}/download',[DocumentController::class,'download'])->name('documents.download');
+    Route::get('/quiz-attempts/{attempt}/result',[QuizController::class,'result'])->name('quizzes.result');
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
     Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
