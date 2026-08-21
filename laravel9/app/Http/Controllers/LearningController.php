@@ -1,0 +1,6 @@
+<?php
+namespace App\Http\Controllers;
+use App\Models\LearningSection;
+use App\Models\SectionProgress;
+use Illuminate\Http\Request;
+class LearningController extends Controller { public function index(Request $request){$programIds=$request->user()->enrollments()->where('status','active')->pluck('program_id');$sections=LearningSection::with('program')->whereIn('program_id',$programIds)->where('is_active',true)->orderBy('program_id')->orderBy('position')->get();return view('learning.index',compact('sections'));} public function show(Request $request,LearningSection $section){abort_unless($request->user()->enrollments()->where('program_id',$section->program_id)->exists(),403);$section->load('contents');$progress=SectionProgress::firstOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>0]);return view('learning.show',compact('section','progress'));} public function complete(Request $request,LearningSection $section){abort_unless($request->user()->enrollments()->where('program_id',$section->program_id)->exists(),403);SectionProgress::updateOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>100,'completed_at'=>now()]);return back()->with('success','Раздел отмечен как пройденный.');} }

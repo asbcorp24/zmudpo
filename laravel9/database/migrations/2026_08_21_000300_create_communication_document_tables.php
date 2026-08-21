@@ -1,0 +1,12 @@
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+return new class extends Migration { public function up(): void {
+Schema::create('announcements',function(Blueprint $t){$t->id();$t->unsignedBigInteger('legacy_id')->nullable()->index();$t->foreignId('program_id')->nullable()->constrained()->cascadeOnDelete();$t->foreignId('author_id')->nullable()->constrained('users')->nullOnDelete();$t->string('title');$t->longText('body');$t->timestamp('published_at')->nullable();$t->boolean('is_active')->default(true);$t->timestamps();});
+Schema::create('education_documents',function(Blueprint $t){$t->id();$t->unsignedBigInteger('legacy_id')->nullable()->index();$t->foreignId('user_id')->nullable()->constrained()->nullOnDelete();$t->foreignId('program_id')->nullable()->constrained()->nullOnDelete();$t->string('type',30);$t->string('title');$t->string('number')->nullable();$t->date('issued_at')->nullable();$t->string('file_path')->nullable();$t->json('meta')->nullable();$t->timestamps();});
+Schema::create('forum_topics',function(Blueprint $t){$t->id();$t->unsignedBigInteger('legacy_id')->nullable()->index();$t->foreignId('program_id')->nullable()->constrained()->cascadeOnDelete();$t->foreignId('user_id')->constrained()->cascadeOnDelete();$t->string('title');$t->longText('body');$t->boolean('is_closed')->default(false);$t->timestamps();});
+Schema::create('forum_posts',function(Blueprint $t){$t->id();$t->foreignId('forum_topic_id')->constrained()->cascadeOnDelete();$t->foreignId('user_id')->constrained()->cascadeOnDelete();$t->longText('body');$t->timestamps();});
+Schema::create('messages',function(Blueprint $t){$t->id();$t->foreignId('sender_id')->constrained('users')->cascadeOnDelete();$t->foreignId('recipient_id')->constrained('users')->cascadeOnDelete();$t->foreignId('program_id')->nullable()->constrained()->nullOnDelete();$t->text('body');$t->timestamp('read_at')->nullable();$t->timestamps();});
+Schema::create('login_activities',function(Blueprint $t){$t->id();$t->foreignId('user_id')->constrained()->cascadeOnDelete();$t->string('ip',45)->nullable();$t->string('user_agent',500)->nullable();$t->timestamp('logged_in_at');$t->timestamps();});
+} public function down(): void {foreach(['login_activities','messages','forum_posts','forum_topics','education_documents','announcements'] as $table) Schema::dropIfExists($table);} };
