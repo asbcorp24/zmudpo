@@ -6,17 +6,19 @@ use App\Models\Program;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 class ImportLegacyData extends Command {
- protected $signature='legacy:import {--core : Import programs, groups and users}';
+ protected $signature='legacy:import {--core : Import programs, groups and users} {--program-images-dir=}';
  protected $description='Import data from the legacy ZMUDPO database using legacy IDs';
  public function handle(): int {
    if(!$this->option('core')){$this->warn('Use --core for the first migration stage.');return self::SUCCESS;}
+   $imageDir=$this->option('program-images-dir')?:base_path('../timg');File::ensureDirectoryExists(public_path('timg'));
    $this->info('Importing programs...');
-   DB::connection('legacy')->table('tm_spec')->orderBy('num')->chunkById(200,function($rows){foreach($rows as $r){Program::updateOrCreate(['legacy_id'=>$r->num],[
+   DB::connection('legacy')->table('tm_spec')->orderBy('num')->chunkById(200,function($rows)use($imageDir){foreach($rows as $r){$image=isset($r->img)?basename((string)$r->img):null;if($image){$src=rtrim($imageDir,'/\\').DIRECTORY_SEPARATOR.$image;if(is_file($src))@copy($src,public_path('timg/'.$image));}Program::updateOrCreate(['legacy_id'=>$r->num],[
     'title'=>$r->nazv ?: 'Программа '.$r->num,
     'starts_at'=>$r->dat ?: null,
-    'image'=>$r->img ?: null,
+    'image'=>$image ?: null,
     'is_active'=>(bool)$r->actiiv,
     'mode'=>isset($r->kr)&&((int)$r->kr!==0)?'nmo':'dpo',
     'hours'=>isset($r->chas)&&is_numeric($r->chas)?(int)$r->chas:null,
