@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{Enrollment,LoginEvent,Program,User};
+use App\Models\{Enrollment,LoginEvent,Program,ProgramType,User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -10,10 +10,12 @@ class AuthController extends Controller
 {
  public function showLogin(Request $request)
  {
-  $programs=Program::where('is_active',true)->orderByRaw("mode='nmo'")->orderBy('title')->get();
+  $programs=Program::with('type')->where('is_active',true)->orderBy('title')->get();
+  $typeIds=$programs->pluck('program_type_id')->filter()->unique()->values();
+  $programTypes=ProgramType::whereIn('id',$typeIds)->orderBy('legacy_id')->get();
   $selectedProgram=null;
-  if($request->filled('program'))$selectedProgram=Program::where('is_active',true)->find($request->integer('program'));
-  elseif($request->filled('spec'))$selectedProgram=Program::where('is_active',true)->where('legacy_id',$request->integer('spec'))->first();
+  if($request->filled('program'))$selectedProgram=Program::with('type')->where('is_active',true)->find($request->integer('program'));
+  elseif($request->filled('spec'))$selectedProgram=Program::with('type')->where('is_active',true)->where('legacy_id',$request->integer('spec'))->first();
 
   $individuals=collect();
   $legalEntities=collect();
@@ -28,7 +30,7 @@ class AuthController extends Controller
    $legalEntities=$users->where('is_legal_entity',true)->values();
   }
 
-  return view('auth.login',compact('programs','selectedProgram','individuals','legalEntities'));
+  return view('auth.login',compact('programs','programTypes','selectedProgram','individuals','legalEntities'));
  }
  public function create(Request $request){return $this->showLogin($request);}
  public function login(Request $request){return $this->performLogin($request);}
