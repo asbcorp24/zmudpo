@@ -1,5 +1,7 @@
 <?php
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\{Hash,Password};
 use App\Http\Controllers\{AuthController,DashboardController,LearningController,QuizController,PracticeController,DocumentController,ForumController,PublicSiteController,CourseRegistrationController,PaymentController,OrganizationPortalController};
 use App\Http\Controllers\Admin\{DashboardController as AdminDashboard,ProgramController as AdminPrograms,ProgramTypeController as AdminProgramTypes,UserController as AdminUsers,EnrollmentController as AdminEnrollments,SectionController as AdminSections,ReviewController as AdminReview,GroupController as AdminGroups,DocumentAdminController as AdminDocuments,AnnouncementController as AdminAnnouncements,LegacyAdminController,BulkUserController,ContentAdminController,ArchiveAdminController,PermissionController,QuizAdminController,OrganizationController as AdminOrganizations};
 use App\Http\Controllers\Curator\DashboardController as CuratorDashboard;
@@ -13,7 +15,14 @@ Route::get('/registration/sent/{user}',[CourseRegistrationController::class,'sen
 Route::get('/registration/verify/{user}',[CourseRegistrationController::class,'verify'])->middleware('guest')->name('public.registration.verify');
 Route::get('/courses/{program}',[PublicSiteController::class,'program'])->name('public.program');
 
-Route::middleware('guest')->group(function(){Route::get('/login',[AuthController::class,'showLogin'])->name('login');Route::post('/login',[AuthController::class,'login'])->name('login.perform');});
+Route::middleware('guest')->group(function(){
+ Route::get('/login',[AuthController::class,'showLogin'])->name('login');
+ Route::post('/login',[AuthController::class,'login'])->name('login.perform');
+ Route::get('/forgot-password',fn()=>view('auth.forgot-password'))->name('password.request');
+ Route::post('/forgot-password',function(Request $r){$r->validate(['email'=>'required|email']);$s=Password::sendResetLink(['email'=>$r->email]);return $s===Password::RESET_LINK_SENT?back()->with('ok','Ссылка отправлена.'):back()->withErrors(['email'=>'Не удалось отправить ссылку.']);})->name('password.email');
+ Route::get('/reset-password/{token}',fn(Request $r,string $token)=>view('auth.reset-password',['token'=>$token,'email'=>$r->query('email')]))->name('password.reset');
+ Route::post('/reset-password',function(Request $r){$d=$r->validate(['token'=>'required','email'=>'required|email','password'=>'required|min:8|confirmed']);$s=Password::reset($d,function($u,$p){$u->update(['password'=>Hash::make($p)]);});return $s===Password::PASSWORD_RESET?redirect()->route('login')->with('ok','Пароль установлен.'):back()->withErrors(['email'=>'Ссылка недействительна или устарела.']);})->name('password.update');
+});
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth')->name('logout');
 Route::get('/payments/robokassa/success',[PaymentController::class,'success'])->name('payments.robokassa.success');
 Route::middleware('auth')->group(function(){
