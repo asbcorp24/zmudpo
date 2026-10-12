@@ -23,7 +23,7 @@ class CompletionService
   $passedAssignments=QuizAttempt::where('user_id',$e->user_id)->whereIn('quiz_assignment_id',$requiredAssignments)->where('passed',1)->distinct('quiz_assignment_id')->count('quiz_assignment_id');
 
   $requiredContent=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$e->program_id)->where('is_active',1))
-   ->where('is_active',1)->where('is_required',1)->whereIn('legacy_type',[4,7,10,17])->pluck('id');
+   ->where('is_active',1)->where('is_required',1)->whereIn('legacy_type',[4,10,17])->pluck('id');
   $acceptedContent=ContentItemResponse::where('user_id',$e->user_id)->whereIn('content_item_id',$requiredContent)->where('status','accepted')->count();
 
   $finalDefinitionIds=FinalWorkDefinition::where('is_active',1)->whereHas('programs',fn($q)=>$q->where('programs.id',$e->program_id))->pluck('id');
