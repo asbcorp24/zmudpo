@@ -23,7 +23,8 @@ class LearningController extends Controller {
   $progress=SectionProgress::firstOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>0]);
   $quizzes=QuizAssignment::with('quiz')->where('program_id',$section->program_id)->where('learning_section_id',$section->id)->where('is_active',true)->get();
   $linkedQuizIds=$section->contentItems->map(fn($item)=>(int)data_get($item->settings,'quiz_assignment_id'))->filter()->unique();
-  $quizAttempts=QuizAttempt::where('user_id',$request->user()->id)->whereIn('quiz_assignment_id',$quizzes->pluck('id'))->latest('finished_at')->get()->groupBy('quiz_assignment_id');
+  $quizAttemptIds=$quizzes->pluck('id')->merge($linkedQuizIds)->unique();
+  $quizAttempts=QuizAttempt::where('user_id',$request->user()->id)->whereIn('quiz_assignment_id',$quizAttemptIds)->latest('finished_at')->get()->groupBy('quiz_assignment_id');
   $practice=PracticeAssignment::where('program_id',$section->program_id)->where('learning_section_id',$section->id)->where('is_active',true)->get();
   $submissions=Submission::where('user_id',$request->user()->id)->whereIn('practice_assignment_id',$practice->pluck('id'))->get()->keyBy('practice_assignment_id');
   $responses=ContentItemResponse::where('user_id',$request->user()->id)->whereIn('content_item_id',$section->contentItems->pluck('id'))->get()->keyBy('content_item_id');
@@ -203,7 +204,7 @@ class LearningController extends Controller {
  public function submitResponse(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   $legacy=(int)$item->legacy_type;
-  abort_unless(in_array($legacy,[4,10,17,20],true),422,'Этот тип материала не принимает ответ.');
+  abort_unless(in_array($legacy,[4,7,10,17,20],true),422,'Этот тип материала не принимает ответ.');
   $data=$request->validate([
    'text'=>['nullable','string','max:50000'],
    'file'=>['nullable','file','max:51200'],
