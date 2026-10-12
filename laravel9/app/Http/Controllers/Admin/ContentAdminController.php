@@ -24,6 +24,7 @@ class ContentAdminController extends Controller
         10 => ['type'=>'response','name'=>'Набор скриншотов или текстов'],
         11 => ['type'=>'payment','name'=>'Оплата раздела'],
         12 => ['type'=>'link','name'=>'Ссылка'],
+        13 => ['type'=>'cloud_link','name'=>'Ссылка на облако'],
         15 => ['type'=>'certificate_test','name'=>'Тест с сертификатом'],
         16 => ['type'=>'practice','name'=>'Практика'],
         17 => ['type'=>'notebook','name'=>'Рабочая тетрадь'],
@@ -156,7 +157,7 @@ class ContentAdminController extends Controller
         foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max','source_value'] as $key)if(array_key_exists($key,$data)&&$data[$key]!==null&&$data[$key]!=='')$settings[$key]=$data[$key];
         if($legacy===18 && isset($settings['legacy_handler_path']))$settings['handler_execution']='disabled_for_security';
         $title=trim((string)($data['title'] ?? ''));if($title==='')$title=$file?pathinfo($file->getClientOriginalName(),PATHINFO_FILENAME):$map['name'];
-        return ContentItem::create(['learning_section_id'=>$data['learning_section_id'],'title'=>$title,'type'=>$map['type'],'legacy_type'=>$legacy,'body'=>$data['body'] ?? null,'file_path'=>$filePath,'extra_file_path'=>$extraPath,'external_url'=>$data['external_url'] ?? ($legacy===2||$legacy===12?($data['source_value'] ?? null):null),'position'=>$data['position'] ?? 0,'available_from'=>$data['available_from'] ?? null,'available_until'=>$data['available_until'] ?? null,'repeat_limit'=>$data['repeat_limit'] ?? null,'is_required'=>$request->boolean('is_required'),'is_active'=>$request->boolean('is_active',true),'allow_duplicate'=>$request->boolean('allow_duplicate'),'flag'=>$request->boolean('flag'),'settings'=>$settings]);
+        return ContentItem::create(['learning_section_id'=>$data['learning_section_id'],'title'=>$title,'type'=>$map['type'],'legacy_type'=>$legacy,'body'=>$data['body'] ?? null,'file_path'=>$filePath,'extra_file_path'=>$extraPath,'external_url'=>$data['external_url'] ?? (in_array($legacy,[2,12,13],true)?($data['source_value'] ?? null):null),'position'=>$data['position'] ?? 0,'available_from'=>$data['available_from'] ?? null,'available_until'=>$data['available_until'] ?? null,'repeat_limit'=>$data['repeat_limit'] ?? null,'is_required'=>$request->boolean('is_required'),'is_active'=>$request->boolean('is_active',true),'allow_duplicate'=>$request->boolean('allow_duplicate'),'flag'=>$request->boolean('flag'),'settings'=>$settings]);
     }
 
     private function storeContentFile($file,bool $package): array
