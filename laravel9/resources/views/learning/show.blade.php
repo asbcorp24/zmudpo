@@ -11,6 +11,9 @@
 @php($response=$responses->get($item->id))
 @php($locked=!empty($set['password_required'])&&!session('content_unlocked.'.$item->id))
 <article class="content-item"><div class="content-icon">{{ strtoupper(substr($item->type ?? 'M',0,2)) }}</div><div style="width:100%"><h3>{{ $item->title }}</h3>
+@if($locked)
+<div class="response-box mt-3"><strong>Материал защищён кодом доступа</strong><form method="post" action="{{route('learning.unlock',$item)}}" class="mt-2">@csrf<div class="input-group"><input class="form-control" name="code" required><button class="btn btn-primary" type="submit">Открыть</button></div></form></div>
+@else
 @if($item->body)<div class="content-body">{!! $item->body !!}</div>@endif
 @if(!empty($set['list_options']))<div class="mt-2"><strong>Варианты:</strong><ol>@foreach($set['list_options'] as $option)<li>{{$option}}</li>@endforeach</ol></div>@endif
 @if(in_array((int)$item->legacy_type,[15,22],true) && (!empty($set['certificate_name'])||!empty($set['certificate_hours'])))<div class="alert alert-info mt-2"><strong>{{$set['certificate_name']??'Сертификат'}}</strong>@if(!empty($set['certificate_hours'])) · {{$set['certificate_hours']}} ч.@endif @if(!empty($set['certificate_text']))<div>{{$set['certificate_text']}}</div>@endif</div>@endif
@@ -55,6 +58,7 @@
     <button class="btn btn-primary mt-3" type="submit">{{ $response ? 'Обновить и отправить' : 'Отправить куратору' }}</button>
   </form>
 </div>
+@endif
 @endif
 </div></article>
 @empty<p class="empty">Материалы пока не добавлены или сейчас недоступны.</p>@endforelse</div>
