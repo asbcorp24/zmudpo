@@ -72,6 +72,7 @@ class LearningController extends Controller {
  }
 
  public function complete(Request $request,LearningSection $section,LearningAccessService $access){
+  abort_unless($request->user()->personal_data_consent_at,403,'Необходимо подтвердить согласие на обработку персональных данных.');
   abort_unless($access->canOpenSection($request->user(),$section),403);
   $requiredItems=ContentItem::where('learning_section_id',$section->id)->where('is_active',1)->where('is_required',1)->get();
   foreach($requiredItems as $item){
@@ -258,6 +259,7 @@ class LearningController extends Controller {
  }
 
  private function authorizeItem(Request $request,ContentItem $item,LearningAccessService $access):void{
+  abort_unless($request->user()->personal_data_consent_at,403,'Необходимо подтвердить согласие на обработку персональных данных.');
   $section=$item->section;abort_unless($section&&$item->is_active&&$access->canOpenSection($request->user(),$section),403);
   if($item->available_from&&now()->lt($item->available_from))abort(403,'Материал ещё не открыт.');
   if($item->available_until&&now()->gt($item->available_until))abort(403,'Срок доступа к материалу завершён.');
