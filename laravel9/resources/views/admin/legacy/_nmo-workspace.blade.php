@@ -118,7 +118,7 @@ $typeNames=collect($legacyTypes)->mapWithKeys(fn($v,$k)=>[$k=>$v['name']]);
     <form id="addItemForm" data-ajax="1" method="post" enctype="multipart/form-data" action="{{route('admin.nmo.items.store')}}">@csrf
       <input id="addItemSectionId" type="hidden" name="learning_section_id">
       <div class="nmo-grid-3"><div><label>Тип</label><select id="legacyTypeSelect" name="legacy_type" required>@foreach($legacyTypes as $id=>$t)<option value="{{$id}}">{{$t['name']}}</option>@endforeach</select></div><div><label>Название</label><input name="title" placeholder="Если пусто — возьмём имя файла"></div><div><label>Порядок</label><input type="number" name="position" min="0" value="0"></div></div>
-      <div class="type-field" data-types="2,12"><label>URL</label><input name="external_url" type="url" placeholder="https://..."></div>
+      <div class="type-field" data-types="2,12,13"><label>URL</label><input name="external_url" type="url" placeholder="https://..."></div>
       <div class="type-field" data-types="1"><label>Документы</label><label class="drop-zone"><input type="file" name="files[]" multiple><span>Перетащите PDF/Word/другие документы<br><small>Можно выбрать несколько сразу</small></span></label></div>
       <div class="type-field" data-types="3,15,17,18,21,22"><label>HTML/ZIP пакет</label><label class="drop-zone"><input type="file" name="file" accept=".zip,.html,.htm"><span>Перетащите ZIP или HTML<br><small>ZIP будет безопасно распакован в приватное хранилище</small></span></label></div>
       <div class="type-field" data-types="7"><label>Файл</label><label class="drop-zone"><input type="file" name="file"><span>Перетащите файл</span></label><label>Идентификатор / значение поля</label><input name="source_value"></div>
