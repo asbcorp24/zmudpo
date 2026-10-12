@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,ContentItemTicketAssignment,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
 use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB,Storage};
@@ -150,12 +150,21 @@ class LearningController extends Controller {
   $response=ContentItemResponse::firstOrNew(['content_item_id'=>$item->id,'user_id'=>$request->user()->id]);
   $meta=$response->meta?:[];
   if($legacy===20){
-   if(!isset($meta['random_value']) || $request->input('action')==='reroll'){
-    $set=$item->settings?:[];$min=(int)($set['random_min']??1);$max=(int)($set['random_max']??100);if($max<$min){$t=$min;$min=$max;$max=$t;}
-    $meta['random_value']=random_int($min,$max);$meta['generated_at']=now()->toIso8601String();
-   }
+   $set=$item->settings?:[];$min=(int)($set['random_min']??1);$max=(int)($set['random_max']??100);if($max<$min){$t=$min;$min=$max;$max=$t;}
+   $enrollment=Enrollment::where('user_id',$request->user()->id)->where('program_id',$item->section->program_id)->where('status','active')->firstOrFail();
+   $scopeKey=$enrollment->group_id?'group:'.$enrollment->group_id:'program:'.$enrollment->program_id;
+   $ticket=DB::transaction(function()use($request,$item,$scopeKey,$min,$max){
+    $existing=ContentItemTicketAssignment::where('content_item_id',$item->id)->where('user_id',$request->user()->id)->lockForUpdate()->first();
+    if($existing)return $existing;
+    $used=ContentItemTicketAssignment::where('content_item_id',$item->id)->where('scope_key',$scopeKey)->lockForUpdate()->pluck('ticket_number')->all();
+    $available=array_values(array_diff(range($min,$max),$used));
+    abort_if(!$available,422,'Свободных билетов больше нет. Обратитесь к куратору.');
+    $number=$available[array_rand($available)];
+    return ContentItemTicketAssignment::create(['content_item_id'=>$item->id,'user_id'=>$request->user()->id,'scope_key'=>$scopeKey,'ticket_number'=>$number]);
+   });
+   $meta['random_value']=$ticket->ticket_number;$meta['generated_at']=$ticket->created_at?->toIso8601String();
    $response->meta=$meta;$response->status='submitted';$response->submitted_at=now();$response->save();
-   return back()->with('ok','Случайное значение закреплено за вами: '.$meta['random_value']);
+   return back()->with('ok','Билет закреплён за вами: '.$ticket->ticket_number);
   }
   if($request->hasFile('file')){
    if($response->file_path)Storage::delete($response->file_path);
