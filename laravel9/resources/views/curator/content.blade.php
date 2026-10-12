@@ -4,6 +4,25 @@
 @include('curator._legacy_nav')
 <div class="page-heading"><div><h1>Контроль NMO</h1><p>Все действия слушателей по закреплённым программам. Только просмотр и проверка — структуру обучения меняет суперадмин.</p></div></div>
 
+<div class="panel mb-4">
+<form method="get" class="grid">
+<div><label>Программа</label><select class="form-select" name="program_id"><option value="">Все</option>@foreach($programs as $p)<option value="{{$p->id}}" @selected((int)request('program_id')===$p->id)>{{$p->title}}</option>@endforeach</select></div>
+<div><label>Группа</label><select class="form-select" name="group_id"><option value="">Все</option>@foreach($groups as $g)<option value="{{$g->id}}" @selected((int)request('group_id')===$g->id)>{{$g->name}}</option>@endforeach</select></div>
+<div><label>Слушатель</label><select class="form-select" name="user_id"><option value="">Все</option>@foreach($students as $s)<option value="{{$s->id}}" @selected((int)request('user_id')===$s->id)>{{$s->full_name}}</option>@endforeach</select></div>
+<div><label>Действие</label><select class="form-select" name="action"><option value="">Все</option>@foreach($actions as $a)<option value="{{$a->action}}" @selected(request('action')===$a->action)>{{$a->label?:$a->action}}</option>@endforeach</select></div>
+<div><label>С даты</label><input class="form-control" type="date" name="date_from" value="{{request('date_from')}}"></div>
+<div><label>По дату</label><input class="form-control" type="date" name="date_to" value="{{request('date_to')}}"></div>
+<div class="d-flex align-items-end gap-2"><button class="btn btn-primary">Применить</button><a class="btn btn-outline-secondary" href="{{route('curator.content')}}">Сбросить</a></div>
+</form></div>
+
+<div class="panel mb-4"><div class="panel-head"><h2>Хронология всех действий</h2><span class="badge-soft">{{$activity->total()}}</span></div>
+<div class="table-responsive"><table class="table table-hover align-middle"><thead><tr><th>Дата</th><th>Слушатель</th><th>Действие</th><th>Программа</th><th>Раздел</th><th>Материал</th><th>IP</th><th>Данные</th></tr></thead><tbody>
+@forelse($activity as $x)<tr>
+<td>{{$x->created_at?->format('d.m.Y H:i:s')}}</td><td>{{$x->user?->full_name}}</td><td><strong>{{$x->label?:$x->action}}</strong><div class="small text-secondary">{{$x->action}}</div></td>
+<td>{{$x->program?->title??'—'}}</td><td>{{$x->section?->title??'—'}}</td><td>{{$x->item?->title??'—'}}</td><td>{{$x->ip??'—'}}</td><td><small>{{!empty($x->meta)?json_encode($x->meta,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES):'—'}}</small></td>
+</tr>@empty<tr><td colspan="8">Действий пока нет.</td></tr>@endforelse
+</tbody></table></div>{{$activity->links()}}</div>
+
 <div class="stats-grid mb-4">
  <div class="stat-card"><span>Ответов / файлов</span><strong>{{$responses->count()}}</strong></div>
  <div class="stat-card"><span>Попыток тестов</span><strong>{{$attempts->count()}}</strong></div>
