@@ -71,7 +71,7 @@
         <header class="topbar">
             <button class="menu-button" data-sidebar-toggle aria-label="Меню"><i class="bi bi-list"></i></button>
             <div>
-                <div class="top-title">@yield('page-title', @yield('title','Личный кабинет'))</div>
+                <div class="top-title">@hasSection('page-title')@yield('page-title')@else @yield('title','Личный кабинет') @endif</div>
                 <div class="top-subtitle">ГАПОУ «Зеленодольский медицинский колледж»</div>
             </div>
             <div class="userbox">
