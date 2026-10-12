@@ -34,6 +34,6 @@
 <div class="border-top py-3"><form method="post" action="{{route('admin.organizations.employees.update',[$organization,$employee])}}">@csrf @method('PUT')
 <div class="grid"><div><label>ФИО</label><input class="form-control" name="full_name" value="{{$employee->full_name}}" required></div><div><label>E-mail</label><input class="form-control" type="email" name="email" value="{{$employee->email}}"></div><div><label>Телефон</label><input class="form-control" name="phone" value="{{$employee->phone}}"></div><div><label><input type="checkbox" name="is_active" value="1" @checked($employee->is_active)> Активен</label></div></div>
 <div class="small text-secondary mt-2">@foreach($employee->enrollments as $e)<span class="badge-soft">{{$e->program?->title}}@if($e->group) · {{$e->group->name}}@endif</span> @endforeach</div>
-<div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-primary">Сохранить</button></form><form method="post" action="{{route('admin.organizations.employees.destroy',[$organization,$employee])}}">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Удалить</button></form></div></div>
+<button class="btn btn-sm btn-outline-primary mt-2">Сохранить</button></form><form class="mt-2" method="post" action="{{route('admin.organizations.employees.destroy',[$organization,$employee])}}">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Удалить</button></form></div>
 @empty<p class="empty">Сотрудников пока нет.</p>@endforelse</div>
 @endsection
