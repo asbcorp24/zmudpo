@@ -9,9 +9,14 @@
 @php($packageRoot=$set['package_root']??null)
 @php($packageEntry=$packageRoot?ltrim(str_replace($packageRoot.'/','',(string)$item->file_path),'/'):null)
 @php($response=$responses->get($item->id))
-@php($locked=!empty($set['password_required'])&&!session('content_unlocked.'.$item->id))
+@php($codeLocked=!empty($set['password_required'])&&!session('content_unlocked.'.$item->id))
+@php($paymentItem=$paymentTargets->get($item->id))
+@php($paymentLocked=$paymentItem&&!$entitledItemIds->contains($item->id))
+@php($locked=$codeLocked||$paymentLocked)
 <article class="content-item"><div class="content-icon">{{ strtoupper(substr($item->type ?? 'M',0,2)) }}</div><div style="width:100%"><h3>{{ $item->title }}</h3>
-@if($locked)
+@if($paymentLocked)
+<div class="response-box mt-3"><div class="d-flex justify-content-between gap-3 align-items-center flex-wrap"><div><strong>Платный учебный блок</strong><div class="text-secondary small">Для доступа требуется оплата@if(data_get($paymentItem->settings,'price')) · {{number_format((float)data_get($paymentItem->settings,'price'),2,',',' ')}} ₽@endif</div></div><form method="post" action="{{route('payments.content.start',$paymentItem)}}" data-no-ajax>@csrf<button class="btn btn-primary" type="submit">Оплатить и открыть</button></form></div></div>
+@elseif($codeLocked)
 <div class="response-box mt-3"><strong>Материал защищён кодом доступа</strong><form method="post" action="{{route('learning.unlock',$item)}}" class="mt-2">@csrf<div class="input-group"><input class="form-control" name="code" required><button class="btn btn-primary" type="submit">Открыть</button></div></form></div>
 @else
 @if($item->body)<div class="content-body">{!! $item->body !!}</div>@endif
