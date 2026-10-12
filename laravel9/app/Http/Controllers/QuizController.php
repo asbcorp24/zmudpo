@@ -55,6 +55,7 @@ class QuizController extends Controller
         $linked=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$a->program_id))
             ->whereIn('legacy_type',[3,15,18,21,22])->where('is_active',1)->get()
             ->filter(fn($item)=>(int)data_get($item->settings,'quiz_assignment_id')===$a->id);
+        if($linked->isNotEmpty())abort_unless($r->user()->personal_data_consent_at,403,'Необходимо подтвердить согласие на обработку персональных данных.');
         foreach($linked as $item){
             if($item->available_from&&now()->lt($item->available_from))abort(403,'Тест ещё не открыт.');
             if($item->available_until&&now()->gt($item->available_until))abort(403,'Срок доступа к тесту завершён.');
