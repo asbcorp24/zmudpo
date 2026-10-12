@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{ContentItem,ContentItemResponse,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
-use App\Services\LearningAccessService;
+use App\Models\{ContentItem,ContentItemResponse,Enrollment,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 class LearningController extends Controller {
@@ -48,6 +48,16 @@ class LearningController extends Controller {
   $full=rtrim($root,'/').'/'.ltrim($relative,'/');abort_unless(Storage::exists($full),404);
   $ext=strtolower(pathinfo($full,PATHINFO_EXTENSION));$mime=match($ext){'html','htm'=>'text/html; charset=UTF-8','js'=>'application/javascript','css'=>'text/css','json'=>'application/json','svg'=>'image/svg+xml','png'=>'image/png','jpg','jpeg'=>'image/jpeg','gif'=>'image/gif','webp'=>'image/webp','mp3'=>'audio/mpeg','mp4'=>'video/mp4','pdf'=>'application/pdf',default=>'application/octet-stream'};
   return response(Storage::get($full),200,['Content-Type'=>$mime,'X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
+ }
+
+
+ public function completeProgram(Request $request,ContentItem $item,LearningAccessService $access,CompletionService $completion){
+  $item->load('section');$this->authorizeItem($request,$item,$access);
+  abort_unless((int)$item->legacy_type===5,422,'Этот элемент не завершает обучение.');
+  $enrollment=Enrollment::where('user_id',$request->user()->id)->where('program_id',$item->section->program_id)->where('status','active')->firstOrFail();
+  $enrollment->load('program');
+  $completion->complete($enrollment);
+  return redirect()->route('programs.show',$enrollment)->with('ok','Программа успешно завершена.');
  }
 
  public function submitResponse(Request $request,ContentItem $item,LearningAccessService $access){
