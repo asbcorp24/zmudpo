@@ -129,6 +129,19 @@ class LearningController extends Controller {
 
 
 
+
+ public function downloadExtra(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
+  abort_unless($item->extra_file_path && Storage::exists($item->extra_file_path),404);
+  if((int)$item->legacy_type===21){
+   $assignmentId=(int)data_get($item->settings,'quiz_assignment_id');
+   abort_unless($assignmentId,403,'Файл ответов доступен только для привязанного теста.');
+   $passed=QuizAttempt::where('quiz_assignment_id',$assignmentId)->where('user_id',$request->user()->id)->where('passed',1)->exists();
+   abort_unless($passed,403,'Ответы доступны после успешного прохождения теста.');
+  }
+  return Storage::download($item->extra_file_path);
+ }
+
  public function media(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless((int)$item->legacy_type===2 && $item->file_path && Storage::exists($item->file_path),404);
