@@ -34,14 +34,14 @@ class LearningController extends Controller {
   return back()->with('success','Раздел отмечен как пройденный.');
  }
  public function download(Request $request,ContentItem $item,LearningAccessService $access){
-  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   abort_unless($item->file_path && Storage::exists($item->file_path),404);
   $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
   if(in_array($ext,['html','htm'],true))return response(Storage::get($item->file_path),200,['Content-Type'=>'text/html; charset=UTF-8','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
   return Storage::download($item->file_path);
  }
  public function package(Request $request,ContentItem $item,LearningAccessService $access,?string $path=null){
-  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   $settings=$item->settings?:[];$root=$settings['package_root']??null;abort_unless($root,404);
   $relative=$path?:ltrim(str_replace($root.'/','',(string)$item->file_path),'/');
   $relative=str_replace('\\','/',$relative);abort_if(str_starts_with($relative,'/')||preg_match('/(^|\/)\.\.(\/|$)/',$relative),400);
@@ -52,8 +52,22 @@ class LearningController extends Controller {
 
 
 
+
+ public function unlock(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $settings=$item->settings?:[];
+  if(empty($settings['password_required']))return back();
+  $data=$request->validate(['code'=>['required','string','max:255']]);
+  $codes=array_values(array_filter((array)($settings['access_codes']??[]),fn($v)=>trim((string)$v)!==''));
+  $needle=trim($data['code']);$index=array_search($needle,$codes,true);
+  if($index===false)return back()->withErrors(['code'=>'Код доступа неверный или уже использован.']);
+  array_splice($codes,$index,1);$settings['access_codes']=$codes;$item->settings=$settings;$item->save();
+  $request->session()->put('content_unlocked.'.$item->id,true);
+  return back()->with('ok','Материал разблокирован.');
+ }
+
  public function table(Request $request,ContentItem $item,LearningAccessService $access){
-  $item->load('section.program');$this->authorizeItem($request,$item,$access);
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   abort_unless((int)$item->legacy_type===19 && $item->file_path && Storage::exists($item->file_path),404);
   $raw=Storage::get($item->file_path);$rows=[];
   foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,';');}
@@ -62,7 +76,7 @@ class LearningController extends Controller {
  }
 
  public function completeProgram(Request $request,ContentItem $item,LearningAccessService $access,CompletionService $completion){
-  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   abort_unless((int)$item->legacy_type===5,422,'Этот элемент не завершает обучение.');
   $enrollment=Enrollment::where('user_id',$request->user()->id)->where('program_id',$item->section->program_id)->where('status','active')->firstOrFail();
   $enrollment->load('program');
@@ -71,7 +85,7 @@ class LearningController extends Controller {
  }
 
  public function submitResponse(Request $request,ContentItem $item,LearningAccessService $access){
-  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   $legacy=(int)$item->legacy_type;
   abort_unless(in_array($legacy,[4,7,10,17,20],true),422,'Этот тип материала не принимает ответ.');
   $data=$request->validate([
@@ -109,6 +123,12 @@ class LearningController extends Controller {
   $allowed=$response->user_id===$request->user()->id || in_array($request->user()->role,['curator','admin'],true);abort_unless($allowed,403);
   $path=$index>=0?($response->files[$index]??null):$response->file_path;abort_unless($path&&Storage::exists($path),404);
   return Storage::download($path);
+ }
+
+
+ private function assertUnlocked(Request $request,ContentItem $item): void{
+  $settings=$item->settings?:[];
+  if(!empty($settings['password_required']) && !$request->session()->get('content_unlocked.'.$item->id))abort(403,'Материал защищён одноразовым кодом доступа.');
  }
 
  private function authorizeItem(Request $request,ContentItem $item,LearningAccessService $access):void{
