@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{ContentItem,ContentItemEntitlement,QuizAssignment,QuizAttempt,QuizAttemptDetail,Enrollment};
+use App\Models\{ContentItem,ContentItemEntitlement,NmoActivityLog,QuizAssignment,QuizAttempt,QuizAttemptDetail,Enrollment};
 use App\Services\{LearningAccessService,QuizAccessService};
 use Illuminate\Http\Request;
 
@@ -17,6 +17,7 @@ class QuizController extends Controller
     public function show(Request $r, QuizAssignment $assignment, LearningAccessService $access, QuizAccessService $rules)
     {
         $this->allow($r,$assignment,$access,$rules);$assignment->load('quiz.questions.options');$quiz=$assignment->quiz;
+        NmoActivityLog::create(['user_id'=>$r->user()->id,'program_id'=>$assignment->program_id,'learning_section_id'=>$assignment->learning_section_id,'action'=>'quiz_open','label'=>'Открыл тест','meta'=>['assignment_id'=>$assignment->id,'title'=>$assignment->title],'ip'=>$r->ip()]);
         return view('quizzes.show',compact('quiz','assignment'));
     }
     public function submit(Request $r, QuizAssignment $assignment, LearningAccessService $access, QuizAccessService $rules)
@@ -39,6 +40,7 @@ class QuizController extends Controller
         $percent=$max>0?round($score/$max*100,2):0;
         $a=QuizAttempt::create(['quiz_id'=>$quiz->id,'quiz_assignment_id'=>$assignment->id,'user_id'=>$r->user()->id,'score'=>$score,'percent'=>$percent,'passed'=>$percent>=$assignment->pass_percent,'answers'=>$answers,'started_at'=>now(),'finished_at'=>now(),'ip'=>$r->ip()]);
         QuizAttemptDetail::create(['quiz_attempt_id'=>$a->id,'source'=>'laravel','questions'=>$details,'extra'=>['max_score'=>$max,'pass_percent'=>$assignment->pass_percent]]);
+        NmoActivityLog::create(['user_id'=>$r->user()->id,'program_id'=>$assignment->program_id,'learning_section_id'=>$assignment->learning_section_id,'action'=>'quiz_submit','label'=>'Завершил тест','meta'=>['assignment_id'=>$assignment->id,'attempt_id'=>$a->id,'percent'=>$percent,'passed'=>$a->passed],'ip'=>$r->ip()]);
         return redirect()->route('quizzes.result',$a)->with('ok',($a->passed?'Тест пройден: ':'Тест не пройден: ').$percent.'%');
     }
     public function result(Request $r,QuizAttempt $attempt)

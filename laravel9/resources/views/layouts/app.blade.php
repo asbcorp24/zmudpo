@@ -19,6 +19,7 @@
         </a>
 
         <nav class="app-nav">
+            @if(auth()->user()->role==='student')
             <div class="nav-caption">Обучение</div>
             <a class="nav-link" href="{{route('dashboard')}}"><i class="bi bi-grid"></i><span>Мой кабинет</span></a>
             <a class="nav-link" href="{{route('learning.index')}}"><i class="bi bi-mortarboard"></i><span>Обучение</span></a>
@@ -33,17 +34,18 @@
             <a class="nav-link" href="{{route('student.resources')}}"><i class="bi bi-collection"></i><span>Библиотека</span></a>
             <a class="nav-link" href="{{route('documents.index')}}"><i class="bi bi-file-earmark-text"></i><span>Документы</span></a>
             <a class="nav-link" href="{{route('history.index')}}"><i class="bi bi-clock-history"></i><span>История</span></a>
-            <a class="nav-link" href="{{route('profile.show')}}"><i class="bi bi-person"></i><span>Профиль</span></a>
             @if(auth()->user()->is_legal_entity)<a class="nav-link" href="{{route('organization.index')}}">Моя организация</a>@endif
+            @endif
+            <a class="nav-link" href="{{route('profile.show')}}"><i class="bi bi-person"></i><span>Профиль</span></a>
 
-            @if(in_array(auth()->user()->role,['curator','admin']))
+            @if(auth()->user()->role==='curator')
                 <div class="nav-caption">Куратор</div>
                 <a class="nav-link" href="{{route('curator.dashboard')}}"><i class="bi bi-speedometer2"></i><span>Кабинет куратора</span></a>
                 <a class="nav-link" href="{{route('curator.students')}}"><i class="bi bi-people"></i><span>Слушатели</span></a>
                 <a class="nav-link" href="{{route('curator.review')}}"><i class="bi bi-check2-square"></i><span>Проверка работ</span></a>
                 <a class="nav-link" href="{{route('curator.messages')}}"><i class="bi bi-chat-square-text"></i><span>Сообщения</span></a>
                 <a class="nav-link" href="{{route('curator.attendance')}}"><i class="bi bi-activity"></i><span>Посещаемость</span></a>
-                <a class="nav-link" href="{{route('curator.content')}}"><i class="bi bi-folder2-open"></i><span>Материалы</span></a>
+                <a class="nav-link" href="{{route('curator.content')}}"><i class="bi bi-activity"></i><span>Контроль NMO</span></a>
             @endif
 
             @if(auth()->user()->role==='admin')
@@ -56,7 +58,6 @@
                 <a class="nav-link" href="{{route('admin.groups.index')}}"><i class="bi bi-people-fill"></i><span>Группы</span></a>
                 <a class="nav-link" href="{{route('admin.enrollments.index')}}"><i class="bi bi-person-check"></i><span>Назначения</span></a>
                 <a class="nav-link" href="{{route('admin.quizzes.index')}}"><i class="bi bi-patch-question"></i><span>Тесты</span></a>
-                <a class="nav-link" href="{{route('admin.review.index')}}"><i class="bi bi-clipboard-check"></i><span>Проверка</span></a>
                 <a class="nav-link" href="{{route('admin.documents.index')}}"><i class="bi bi-file-earmark-medical"></i><span>Документы</span></a>
                 <a class="nav-link" href="{{route('admin.document-templates.index')}}"><i class="bi bi-layout-text-window"></i><span>Шаблоны документов</span></a>
                 <a class="nav-link" href="{{route('admin.reports.index')}}"><i class="bi bi-printer"></i><span>Отчёты</span></a>

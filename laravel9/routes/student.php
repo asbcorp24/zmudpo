@@ -29,6 +29,7 @@ Route::middleware('auth')->group(function(){
     Route::post('/learning/announcement/{announcement}/ack',[LearningController::class,'acknowledgeAnnouncement'])->name('learning.announcement.ack');
     Route::post('/learning/personal-data/accept',[LearningController::class,'acceptPersonalData'])->name('learning.personal-data.accept');
     Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
+    Route::get('/learning-content/{item}/external',[LearningController::class,'external'])->name('learning.external');
     Route::get('/learning-content/{item}/package/{path?}',[LearningController::class,'package'])->where('path','.*')->name('learning.package');
     Route::post('/learning-content/{item}/response',[LearningController::class,'submitResponse'])->name('learning.response');
     Route::post('/learning-content/{item}/unlock',[LearningController::class,'unlock'])->name('learning.unlock');
@@ -57,7 +58,7 @@ Route::middleware('auth')->group(function(){
     });
 });
 
-Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,admin'])->group(function(){
+Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator'])->group(function(){
     Route::get('/messages',[CuratorMessageController::class,'index'])->name('messages');
     Route::post('/messages/{enrollment}',[CuratorMessageController::class,'send'])->name('messages.send');
     Route::get('/legacy-logins',[CuratorArchiveController::class,'logins'])->name('legacy-logins');

@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Curator;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Announcement,AttendanceRecord,ContentItem,ContentItemResponse,Enrollment,Group,LearningSection,LearningSectionProgress,LegacyCuratorRecord,QuizAttempt,SectionProgress,Submission,FinalWork,Survey,SurveyResponse};
+use App\Models\{Announcement,AnnouncementUserAcknowledgement,AttendanceRecord,ContentItem,ContentItemResponse,ContentItemTicketAssignment,Enrollment,Group,LearningSection,LearningSectionProgress,LearningSectionVisit,LegacyCuratorRecord,NmoActivityLog,NmoPracticeDiaryEntry,QuizAttempt,SectionProgress,Submission,FinalWork,Survey,SurveyResponse};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,7 +18,25 @@ class LegacyCabinetController extends Controller
 
     public function students(Request $r){$q=$this->enrollments($r);if($r->filled('program_id'))$q->where('program_id',$r->integer('program_id'));if($r->filled('group_id'))$q->where('group_id',$r->integer('group_id'));if($r->filled('q')){$term=$r->string('q')->toString();$q->whereHas('user',fn($x)=>$x->where(fn($u)=>$u->where('full_name','like','%'.$term.'%')->orWhere('login','like','%'.$term.'%')));}$items=$q->orderByDesc('status')->latest('id')->paginate(60)->withQueryString();$ids=$items->pluck('user_id');$lastLogins=Schema::hasTable('login_activities')?DB::table('login_activities')->whereIn('user_id',$ids)->selectRaw('user_id,max(logged_in_at) last_login')->groupBy('user_id')->pluck('last_login','user_id'):collect();return view('curator.students',compact('items','lastLogins')+['programs'=>$this->enrollments($r)->get()->pluck('program','program_id')->filter(),'groups'=>Group::orderBy('name')->get()]);}
 
-    public function student(Request $r,Enrollment $enrollment){$this->allowedEnrollment($r,$enrollment);$enrollment->load(['user','program','group','finalWorks']);$sections=LearningSection::where('program_id',$enrollment->program_id)->orderBy('position')->get();$progress=SectionProgress::where('user_id',$enrollment->user_id)->whereIn('learning_section_id',$sections->pluck('id'))->get()->keyBy('learning_section_id');$nmo=LearningSectionProgress::where('user_id',$enrollment->user_id)->where('program_id',$enrollment->program_id)->latest('legacy_date')->get();$attempts=QuizAttempt::with('assignment')->where('user_id',$enrollment->user_id)->whereHas('assignment',fn($q)=>$q->where('program_id',$enrollment->program_id))->latest('finished_at')->get();$submissions=Submission::with('practiceAssignment')->where('user_id',$enrollment->user_id)->whereHas('practiceAssignment',fn($q)=>$q->where('program_id',$enrollment->program_id))->latest('submitted_at')->get();$logins=Schema::hasTable('login_activities')?DB::table('login_activities')->where('user_id',$enrollment->user_id)->latest('logged_in_at')->limit(100)->get():collect();$legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::where('user_id',$enrollment->user_id)->latest('occurred_at')->get():collect();return view('curator.student',compact('enrollment','sections','progress','nmo','attempts','submissions','logins','legacy'));}
+    public function student(Request $r,Enrollment $enrollment){
+        $this->allowedEnrollment($r,$enrollment);
+        $enrollment->load(['user','program','group','finalWorks']);
+        $sections=LearningSection::with('contentItems')->where('program_id',$enrollment->program_id)->orderBy('position')->get();
+        $itemIds=$sections->flatMap->contentItems->pluck('id');
+        $progress=SectionProgress::where('user_id',$enrollment->user_id)->whereIn('learning_section_id',$sections->pluck('id'))->get()->keyBy('learning_section_id');
+        $nmo=LearningSectionProgress::where('user_id',$enrollment->user_id)->where('program_id',$enrollment->program_id)->latest('legacy_date')->get();
+        $attempts=QuizAttempt::with('assignment')->where('user_id',$enrollment->user_id)->whereHas('assignment',fn($q)=>$q->where('program_id',$enrollment->program_id))->latest('finished_at')->get();
+        $submissions=Submission::with('practiceAssignment')->where('user_id',$enrollment->user_id)->whereHas('practiceAssignment',fn($q)=>$q->where('program_id',$enrollment->program_id))->latest('submitted_at')->get();
+        $responses=ContentItemResponse::with('item.section')->where('user_id',$enrollment->user_id)->whereIn('content_item_id',$itemIds)->latest('submitted_at')->get();
+        $tickets=ContentItemTicketAssignment::with('item.section')->where('user_id',$enrollment->user_id)->whereIn('content_item_id',$itemIds)->latest()->get();
+        $diary=NmoPracticeDiaryEntry::with('item.section')->where('user_id',$enrollment->user_id)->whereIn('content_item_id',$itemIds)->latest('work_date')->get();
+        $visits=LearningSectionVisit::with('section')->where('user_id',$enrollment->user_id)->whereIn('learning_section_id',$sections->pluck('id'))->latest('visited_at')->get();
+        $acks=AnnouncementUserAcknowledgement::with('announcement')->where('user_id',$enrollment->user_id)->latest('acknowledged_at')->get();
+        $activity=NmoActivityLog::with(['program','section','item'])->where('user_id',$enrollment->user_id)->where(fn($q)=>$q->where('program_id',$enrollment->program_id)->orWhereNull('program_id'))->latest()->limit(500)->get();
+        $logins=Schema::hasTable('login_activities')?DB::table('login_activities')->where('user_id',$enrollment->user_id)->latest('logged_in_at')->limit(100)->get():collect();
+        $legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::where('user_id',$enrollment->user_id)->latest('occurred_at')->get():collect();
+        return view('curator.student',compact('enrollment','sections','progress','nmo','attempts','submissions','responses','tickets','diary','visits','acks','activity','logins','legacy'));
+    }
 
     public function attendance(Request $r){
         $q=$this->enrollments($r);
@@ -43,9 +61,33 @@ class LegacyCabinetController extends Controller
 
     public function files(Request $r){$ids=$this->studentIds($r);$pids=$this->programIds($r);$submissions=Submission::with(['user','practiceAssignment'])->whereIn('user_id',$ids)->whereNotNull('file_path')->whereHas('practiceAssignment',fn($q)=>$q->whereIn('program_id',$pids))->latest('submitted_at')->get();$finals=FinalWork::with(['user','enrollment.program'])->whereIn('user_id',$ids)->whereNotNull('file_path')->whereHas('enrollment',fn($q)=>$q->whereIn('program_id',$pids))->latest('submitted_at')->get();$legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::with('user')->where('type','user_file')->whereIn('user_id',$ids)->latest('occurred_at')->get():collect();return view('curator.files',compact('submissions','finals','legacy'));}
 
-    public function content(Request $r){$sections=LearningSection::with(['program','contentItems'])->whereIn('program_id',$this->programIds($r))->orderBy('program_id')->orderBy('position')->get();return view('curator.content',compact('sections'));}
-    public function storeContent(Request $r,LearningSection $section){abort_unless($r->user()->isAdmin()||$this->programIds($r)->contains($section->program_id),403);$d=$r->validate(['title'=>'required|string|max:255','external_url'=>'required|url|max:2000']);$pos=(int)$section->contentItems()->max('position')+1;ContentItem::create(['learning_section_id'=>$section->id,'type'=>'link','title'=>$d['title'],'external_url'=>$d['external_url'],'position'=>$pos,'is_required'=>false]);return back()->with('ok','Ссылка добавлена.');}
-    public function updateContent(Request $r,ContentItem $item){$item->load('section');abort_unless($r->user()->isAdmin()||$this->programIds($r)->contains($item->section?->program_id),403);$d=$r->validate(['title'=>'required|string|max:255','body'=>'nullable|string','external_url'=>'nullable|url|max:2000','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from']);$item->update($d+['is_required'=>$r->boolean('is_required')]);return back()->with('ok','Материал сохранён.');}
+    public function content(Request $r){
+        $eq=$this->enrollments($r);
+        if($r->filled('program_id'))$eq->where('program_id',$r->integer('program_id'));
+        if($r->filled('group_id'))$eq->where('group_id',$r->integer('group_id'));
+        if($r->filled('user_id'))$eq->where('user_id',$r->integer('user_id'));
+        $enrollments=$eq->get();
+        $ids=$enrollments->pluck('user_id');$pids=$enrollments->pluck('program_id')->unique();
+        $sections=LearningSection::with(['program','contentItems'])->whereIn('program_id',$pids)->orderBy('program_id')->orderBy('position')->get();
+        $items=$sections->flatMap->contentItems;
+        $responses=ContentItemResponse::with(['user','item.section'])->whereIn('user_id',$ids)->whereIn('content_item_id',$items->pluck('id'))->latest('submitted_at')->get();
+        $tickets=ContentItemTicketAssignment::with(['user','item.section'])->whereIn('user_id',$ids)->whereIn('content_item_id',$items->pluck('id'))->latest()->get();
+        $diary=NmoPracticeDiaryEntry::with(['user','item.section'])->whereIn('user_id',$ids)->whereIn('content_item_id',$items->pluck('id'))->latest('work_date')->get();
+        $visits=LearningSectionVisit::with(['user','section.program'])->whereIn('user_id',$ids)->whereIn('learning_section_id',$sections->pluck('id'))->latest('visited_at')->limit(1000)->get();
+        $attempts=QuizAttempt::with(['user','assignment'])->whereIn('user_id',$ids)->whereHas('assignment',fn($q)=>$q->whereIn('program_id',$pids))->latest('finished_at')->limit(1000)->get();
+        $acks=AnnouncementUserAcknowledgement::with(['user','announcement'])->whereIn('user_id',$ids)->latest('acknowledged_at')->limit(1000)->get();
+        $activityQuery=NmoActivityLog::with(['user','program','section','item'])->whereIn('user_id',$ids)->where(fn($q)=>$q->whereIn('program_id',$pids)->orWhereNull('program_id'));
+        if($r->filled('action'))$activityQuery->where('action',$r->string('action')->toString());
+        if($r->filled('date_from'))$activityQuery->whereDate('created_at','>=',$r->date('date_from'));
+        if($r->filled('date_to'))$activityQuery->whereDate('created_at','<=',$r->date('date_to'));
+        $activity=$activityQuery->latest()->paginate(100)->withQueryString();
+        $actions=NmoActivityLog::whereIn('user_id',$ids)->select('action','label')->distinct()->orderBy('label')->get();
+        return view('curator.content',compact('sections','enrollments','responses','tickets','diary','visits','attempts','acks','activity','actions')+[
+            'programs'=>$this->enrollments($r)->get()->pluck('program','program_id')->filter(),
+            'groups'=>Group::orderBy('name')->get(),
+            'students'=>$this->enrollments($r)->get()->pluck('user','user_id')->filter(),
+        ]);
+    }
 
     public function documents(Request $r){$ids=$this->studentIds($r);$items=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::with('user')->where('type','workbook')->whereIn('user_id',$ids)->latest()->paginate(80):null;return view('curator.documents',compact('items'));}
     public function downloadLegacy(Request $r,LegacyCuratorRecord $record){abort_unless($this->allowedUser($r,$record->user_id),403);abort_unless($record->archive_path&&Storage::disk('local')->exists($record->archive_path),404);return Storage::disk('local')->download($record->archive_path,basename($record->path?:$record->archive_path));}

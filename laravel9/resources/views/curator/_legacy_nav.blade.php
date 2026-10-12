@@ -1,6 +1,6 @@
 <div class="panel mb-3" style="padding:12px"><div style="display:flex;gap:8px;flex-wrap:wrap">
 <a class="btn btn-sm" href="{{route('curator.dashboard')}}">Успеваемость</a>
-<a class="btn btn-sm gray" href="{{route('curator.content')}}">Добавление ссылок</a>
+<a class="btn btn-sm gray" href="{{route('curator.content')}}">Контроль NMO</a>
 <a class="btn btn-sm gray" href="{{route('curator.review')}}">Проверка работ</a>
 <a class="btn btn-sm gray" href="{{route('curator.messages')}}">Общение</a>
 <a class="btn btn-sm gray" href="{{route('curator.attendance')}}">Посещения сайта</a>

@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{PracticeAssignment,Submission};
+use App\Models\{NmoActivityLog,PracticeAssignment,Submission};
 use App\Services\LearningAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +28,7 @@ class PracticeController extends Controller {
   $submission->submitted_at=now();
   $submission->reviewed_by=null;$submission->reviewed_at=null;$submission->review_comment=null;
   $submission->save();
+  NmoActivityLog::create(['user_id'=>$request->user()->id,'program_id'=>$assignment->program_id,'learning_section_id'=>$assignment->learning_section_id,'action'=>'practice_submit','label'=>'Отправил практическую работу','meta'=>['assignment_id'=>$assignment->id,'submission_id'=>$submission->id,'title'=>$assignment->title],'ip'=>$request->ip()]);
   return back()->with('success','Работа отправлена куратору.');
  }
  public function download(Request $request,Submission $submission){
