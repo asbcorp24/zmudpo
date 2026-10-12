@@ -6,6 +6,10 @@
 
 <div class="panel mb-3"><h2>Разделы</h2>@foreach($sections as $s) @php($p=$progress->get($s->id)) <div class="list-row"><div><strong>{{$s->title}}</strong><small>{{$p?->completed_at?'завершён '.$p->completed_at->format('d.m.Y H:i'):'в процессе'}} · материалов {{$s->contentItems->count()}}</small></div><span>{{$p?->progress_percent??0}}%</span></div>@endforeach</div>
 
+<div class="panel mb-3"><h2>Хронология действий NMO</h2><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Дата</th><th>Действие</th><th>Раздел</th><th>Материал</th><th>IP</th><th>Данные</th></tr></thead><tbody>
+@forelse($activity as $x)<tr><td>{{$x->created_at?->format('d.m.Y H:i:s')}}</td><td><strong>{{$x->label?:$x->action}}</strong><div class="small text-secondary">{{$x->action}}</div></td><td>{{$x->section?->title??'—'}}</td><td>{{$x->item?->title??'—'}}</td><td>{{$x->ip??'—'}}</td><td><small>{{!empty($x->meta)?json_encode($x->meta,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES):'—'}}</small></td></tr>@empty<tr><td colspan="6">Действий пока нет.</td></tr>@endforelse
+</tbody></table></div></div>
+
 <div class="panel mb-3"><h2>Действия по NMO</h2><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Дата</th><th>Раздел</th><th>Материал</th><th>Тип</th><th>Статус</th><th>Оценка</th></tr></thead><tbody>
 @forelse($responses as $x)<tr><td>{{$x->submitted_at?->format('d.m.Y H:i')}}</td><td>{{$x->item?->section?->title}}</td><td>{{$x->item?->title}}</td><td>tip {{$x->item?->legacy_type}}</td><td>{{$x->status}}</td><td>{{$x->score??'—'}}</td></tr>@empty<tr><td colspan="6">Ответов и файлов нет.</td></tr>@endforelse
 </tbody></table></div></div>
