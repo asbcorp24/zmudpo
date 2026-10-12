@@ -1,0 +1,1 @@
+<?php namespace App\Models; class OrganizationProfile extends LegacyAdminModel { protected $casts=['contract_date'=>'date']; public function user(){return $this->belongsTo(User::class);} }
