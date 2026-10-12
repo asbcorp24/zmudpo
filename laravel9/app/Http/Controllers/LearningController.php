@@ -100,6 +100,14 @@ class LearningController extends Controller {
   $this->logActivity($request,'section_complete','Завершил раздел',$section,null);
   return back()->with('success','Раздел отмечен как пройденный.');
  }
+
+ public function external(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
+  abort_unless($item->external_url,404);
+  $this->logActivity($request,'external_open','Перешёл по внешней ссылке',$item->section,$item,['url'=>$item->external_url]);
+  return redirect()->away($item->external_url);
+ }
+
  public function download(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless($item->file_path && Storage::exists($item->file_path),404);
