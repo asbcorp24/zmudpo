@@ -33,6 +33,11 @@ Route::middleware('auth')->group(function(){
     Route::post('/learning-content/{item}/unlock',[LearningController::class,'unlock'])->name('learning.unlock');
     Route::post('/learning-content/{item}/complete-program',[LearningController::class,'completeProgram'])->name('learning.complete-program');
     Route::get('/learning-content/{item}/table',[LearningController::class,'table'])->name('learning.table');
+    Route::get('/learning-content/{item}/practice-diary',[LearningController::class,'practiceDiary'])->name('learning.practice-diary');
+    Route::post('/learning-content/{item}/practice-diary',[LearningController::class,'storePracticeDiary'])->name('learning.practice-diary.store');
+    Route::put('/learning-practice-diary/{entry}',[LearningController::class,'updatePracticeDiary'])->name('learning.practice-diary.update');
+    Route::get('/learning-content/{item}/certificate',[LearningController::class,'certificate'])->name('learning.certificate');
+    Route::get('/learning-content/{item}/media',[LearningController::class,'media'])->name('learning.media');
     Route::get('/learning-content-response/{response}/download/{index?}',[LearningController::class,'downloadResponse'])->whereNumber('index')->name('learning.response.download');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
