@@ -69,7 +69,7 @@
 <a class="btn btn-outline-success" data-no-ajax href="{{route('learning.extra',$item)}}">Просмотреть ответы</a>
 @endif
 @if($packageRoot && $packageEntry)<a class="btn btn-primary" target="_blank" rel="noopener" href="{{ route('learning.package',['item'=>$item,'path'=>$packageEntry]) }}">Открыть интерактивный материал ↗</a>
-@elseif($item->file_path && (int)$item->legacy_type!==2)<a class="btn btn-outline-primary" data-no-ajax href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
+@elseif($item->file_path && !in_array((int)$item->legacy_type,[2,7],true))<a class="btn btn-outline-primary" data-no-ajax href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
 @if((int)$item->legacy_type===19 && $item->file_path)<a class="btn btn-primary" href="{{route('learning.table',$item)}}">Открыть таблицу</a>@endif
 @if($item->external_url)<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="{{ $item->external_url }}">Открыть ресурс ↗</a>@endif
 @if((int)$item->legacy_type===6)<a class="btn btn-primary" href="{{route('student.surveys',array_filter(['survey'=>data_get($set,'survey_id')]))}}">Перейти к анкете</a>@endif
@@ -84,10 +84,10 @@
 @endif
 @endif
 </div>
-@if(in_array((int)$item->legacy_type,[4,10,17],true))
+@if(in_array((int)$item->legacy_type,[4,7,10,17],true))
 <div class="response-box mt-3">
   <div class="d-flex justify-content-between gap-2 align-items-center flex-wrap mb-2">
-    <strong>{{ match((int)$item->legacy_type){4=>'Ответ на контрольную',7=>'Файл / ответ',10=>'Решение задания',17=>'Рабочая тетрадь',default=>'Ответ'} }}</strong>
+    <strong>{{ match((int)$item->legacy_type){4=>'Ответ на контрольную',7=>'Загрузка файла',10=>'Решение задания',17=>'Рабочая тетрадь',default=>'Ответ'} }}</strong>
     @if($response)<span class="status {{$response->status==='accepted'?'completed':($response->status==='revision'||$response->status==='rejected'?'blocked':'active')}}">{{$response->status}}</span>@endif
   </div>
   @if($response?->review_comment)<div class="review-note"><strong>Комментарий куратора:</strong> {{$response->review_comment}} @if($response->score!==null)<span class="ms-2">Оценка: {{$response->score}}</span>@endif</div>@endif
@@ -96,6 +96,7 @@
       <label class="form-label mt-2">Текст ответа</label>
       <textarea class="form-control" name="text" rows="4" placeholder="Введите ответ или комментарий">{{$response?->text}}</textarea>
     @endif
+    @if((int)$item->legacy_type===7 && data_get($set,'source_value'))<div class="small text-secondary mt-2">Допустимый формат / значение: <strong>{{data_get($set,'source_value')}}</strong></div>@endif
     @if((int)$item->legacy_type===10)
       <label class="form-label mt-2">Скриншоты / файлы</label>
       <input class="form-control" type="file" name="files[]" multiple>
@@ -105,7 +106,7 @@
       <input class="form-control" type="file" name="file">
       @if($response?->file_path)<a class="btn btn-sm btn-outline-secondary mt-2" data-no-ajax href="{{route('learning.response.download',$response)}}">Скачать текущий файл</a>@endif
     @endif
-    <button class="btn btn-primary mt-3" type="submit">{{ $response ? 'Обновить и отправить' : 'Отправить куратору' }}</button>
+    <button class="btn btn-primary mt-3" type="submit">@if((int)$item->legacy_type===7){{ $response ? 'Заменить файл' : 'Загрузить файл' }}@else{{ $response ? 'Обновить и отправить' : 'Отправить куратору' }}@endif</button>
   </form>
 </div>
 @endif
