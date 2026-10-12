@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Enrollment,Group,Program,User};
+use App\Models\{Enrollment,Group,OrganizationProfile,Program,User};
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB,Hash};
@@ -46,16 +46,12 @@ class OrganizationController extends Controller
         $before=$organization->toArray();
         DB::transaction(function()use($organization,$d){
             $organization->update(['full_name'=>$d['full_name'],'email'=>$d['email']??null,'phone'=>$d['phone']??null]);
-            DB::table('organization_profiles')->updateOrInsert(
-                ['user_id'=>$organization->id],
-                [
+            OrganizationProfile::updateOrCreate(['user_id'=>$organization->id],[
                     'short_name'=>$d['short_name']??null,'inn'=>$d['inn']??null,'kpp'=>$d['kpp']??null,'ogrn'=>$d['ogrn']??null,
                     'legal_address'=>$d['legal_address']??null,'actual_address'=>$d['actual_address']??null,
                     'contact_person'=>$d['contact_person']??null,'contact_position'=>$d['contact_position']??null,
-                    'contract_number'=>$d['contract_number']??null,'contract_date'=>$d['contract_date']??null,
-                    'comment'=>$d['comment']??null,'updated_at'=>now(),'created_at'=>DB::raw('COALESCE(created_at,NOW())')
-                ]
-            );
+                    'contract_number'=>$d['contract_number']??null,'contract_date'=>$d['contract_date']??null,'comment'=>$d['comment']??null
+                ]);
         });
         $audit->write('organization_updated',$organization,$before,$organization->fresh()->toArray());
         return back()->with('ok','Организация сохранена.');
