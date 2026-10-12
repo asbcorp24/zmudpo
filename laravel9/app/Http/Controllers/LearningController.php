@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{ContentItem,ContentItemResponse,Enrollment,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Models\{ContentItem,ContentItemEntitlement,ContentItemResponse,Enrollment,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
 use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -26,7 +26,10 @@ class LearningController extends Controller {
   $practice=PracticeAssignment::where('program_id',$section->program_id)->where('learning_section_id',$section->id)->where('is_active',true)->get();
   $submissions=Submission::where('user_id',$request->user()->id)->whereIn('practice_assignment_id',$practice->pluck('id'))->get()->keyBy('practice_assignment_id');
   $responses=ContentItemResponse::where('user_id',$request->user()->id)->whereIn('content_item_id',$section->contentItems->pluck('id'))->get()->keyBy('content_item_id');
-  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses'));
+  $paymentItems=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$section->program_id))->where('legacy_type',11)->where('is_active',true)->get();
+  $paymentTargets=collect();foreach($paymentItems as $pay){foreach((array)data_get($pay->settings,'unlock_item_ids',[]) as $targetId)$paymentTargets->put((int)$targetId,$pay);}
+  $entitledItemIds=ContentItemEntitlement::where('user_id',$request->user()->id)->whereIn('content_item_id',$paymentTargets->keys())->pluck('content_item_id');
+  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds'));
  }
  public function complete(Request $request,LearningSection $section,LearningAccessService $access){
   abort_unless($access->canOpenSection($request->user(),$section),403);
@@ -34,7 +37,7 @@ class LearningController extends Controller {
   return back()->with('success','Раздел отмечен как пройденный.');
  }
  public function download(Request $request,ContentItem $item,LearningAccessService $access){
-  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless($item->file_path && Storage::exists($item->file_path),404);
   $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
   if(in_array($ext,['html','htm'],true))return response(Storage::get($item->file_path),200,['Content-Type'=>'text/html; charset=UTF-8','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
@@ -125,6 +128,15 @@ class LearningController extends Controller {
   return Storage::download($path);
  }
 
+
+
+ private function assertPaid(Request $request,ContentItem $item): void{
+  $item->loadMissing('section');
+  if(!$item->section)return;
+  $pay=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$item->section->program_id))
+   ->where('legacy_type',11)->where('is_active',true)->whereJsonContains('settings->unlock_item_ids',$item->id)->first();
+  if($pay && !ContentItemEntitlement::where('user_id',$request->user()->id)->where('content_item_id',$item->id)->exists())abort(402,'Материал доступен после оплаты.');
+ }
 
  private function assertUnlocked(Request $request,ContentItem $item): void{
   $settings=$item->settings?:[];
