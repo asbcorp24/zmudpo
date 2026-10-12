@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{ContentItem,Instructor,LearningSection,PracticeCycle,Program,Survey};
+use App\Models\{ContentItem,Instructor,LearningSection,PracticeCycle,Program,QuizAssignment,Survey};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -40,8 +40,9 @@ class ContentAdminController extends Controller
         $programs = Program::with('type')->orderBy('title')->get();
         $program = $request->filled('program_id') ? Program::find($request->integer('program_id')) : $programs->first();
         [$sections,$instructors,$surveys,$practiceCycles,$allSections] = $this->workspaceData($program);
+        $quizAssignments=$program?QuizAssignment::with('quiz')->where('program_id',$program->id)->orderBy('title')->get():collect();
         $legacyTypes = self::LEGACY_TYPES;
-        if ($request->ajax()) return view('admin.legacy._nmo-workspace', compact('program','sections','programs','instructors','surveys','practiceCycles','allSections','legacyTypes'));
+        if ($request->ajax()) return view('admin.legacy._nmo-workspace', compact('program','sections','programs','instructors','surveys','practiceCycles','allSections','quizAssignments','legacyTypes'));
         return view('admin.legacy.learning-content', compact('programs','program','sections','instructors','surveys','practiceCycles','allSections','legacyTypes'));
     }
 
@@ -86,9 +87,9 @@ class ContentAdminController extends Controller
 
     public function update(Request $request, ContentItem $item)
     {
-        $data=$request->validate(['title'=>'required|string|max:255','body'=>'nullable|string','position'=>'nullable|integer|min:0','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from','repeat_limit'=>'nullable|integer|min:1','external_url'=>'nullable|url|max:1000','file'=>'nullable|file|max:102400','extra_file'=>'nullable|file|max:102400','certificate_name'=>'nullable|string|max:255','certificate_text'=>'nullable|string','certificate_hours'=>'nullable|integer|min:0','list_options'=>'nullable|string','price'=>'nullable|numeric|min:0','survey_id'=>'nullable|integer','practice_cycle_id'=>'nullable|integer','random_min'=>'nullable|integer','random_max'=>'nullable|integer','access_codes'=>'nullable|string','unlock_item_ids'=>'nullable|array','unlock_item_ids.*'=>'exists:content_items,id']);
+        $data=$request->validate(['title'=>'required|string|max:255','body'=>'nullable|string','position'=>'nullable|integer|min:0','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from','repeat_limit'=>'nullable|integer|min:1','external_url'=>'nullable|url|max:1000','file'=>'nullable|file|max:102400','extra_file'=>'nullable|file|max:102400','certificate_name'=>'nullable|string|max:255','certificate_text'=>'nullable|string','certificate_hours'=>'nullable|integer|min:0','list_options'=>'nullable|string','price'=>'nullable|numeric|min:0','survey_id'=>'nullable|integer','practice_cycle_id'=>'nullable|integer','random_min'=>'nullable|integer','random_max'=>'nullable|integer','access_codes'=>'nullable|string','unlock_item_ids'=>'nullable|array','unlock_item_ids.*'=>'exists:content_items,id','quiz_assignment_id'=>'nullable|exists:quiz_assignments,id']);
         $settings=$item->settings ?: [];
-        foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max'] as $key) if($request->has($key)) $settings[$key]=$data[$key] ?? null;
+        foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max','quiz_assignment_id'] as $key) if($request->has($key)) $settings[$key]=$data[$key] ?? null;
         if($request->has('list_options'))$settings['list_options']=$this->lines($data['list_options'] ?? '');
         if($request->has('access_codes'))$settings['access_codes']=$this->lines($data['access_codes'] ?? '');
         if($request->has('unlock_item_ids'))$settings['unlock_item_ids']=array_values(array_unique(array_map('intval',$data['unlock_item_ids']??[])));
@@ -99,7 +100,7 @@ class ContentAdminController extends Controller
             if($packageRoot)$settings['package_root']=$packageRoot;else unset($settings['package_root']);
         }
         if($request->hasFile('extra_file')){if($item->extra_file_path&&!ContentItem::where('id','<>',$item->id)->where('extra_file_path',$item->extra_file_path)->exists())Storage::delete($item->extra_file_path);$data['extra_file_path']=$request->file('extra_file')->store('nmo/extra');}
-        unset($data['file'],$data['extra_file'],$data['certificate_name'],$data['certificate_text'],$data['certificate_hours'],$data['list_options'],$data['price'],$data['survey_id'],$data['practice_cycle_id'],$data['random_min'],$data['random_max'],$data['access_codes'],$data['unlock_item_ids']);
+        unset($data['file'],$data['extra_file'],$data['certificate_name'],$data['certificate_text'],$data['certificate_hours'],$data['list_options'],$data['price'],$data['survey_id'],$data['practice_cycle_id'],$data['random_min'],$data['random_max'],$data['access_codes'],$data['unlock_item_ids'],$data['quiz_assignment_id']);
         $item->update($data+['settings'=>$settings,'is_active'=>$request->boolean('is_active'),'is_required'=>$request->boolean('is_required'),'allow_duplicate'=>$request->boolean('allow_duplicate'),'flag'=>$request->boolean('flag')]);
         return $this->ok($request,'Элемент обновлён',['id'=>$item->id]);
     }
@@ -147,7 +148,7 @@ class ContentAdminController extends Controller
 
     private function validateItem(Request $request): array
     {
-        return $request->validate(['learning_section_id'=>'required|exists:learning_sections,id','legacy_type'=>['required','integer',Rule::in(array_keys(self::LEGACY_TYPES))],'title'=>'nullable|string|max:255','body'=>'nullable|string','position'=>'nullable|integer|min:0','external_url'=>'nullable|url|max:1000','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from','repeat_limit'=>'nullable|integer|min:1','files'=>'nullable|array','files.*'=>'file|max:102400','file'=>'nullable|file|max:102400','extra_file'=>'nullable|file|max:102400','handler_file'=>'nullable|file|max:10240','certificate_name'=>'nullable|string|max:255','certificate_text'=>'nullable|string','certificate_hours'=>'nullable|integer|min:0','list_options'=>'nullable|string','price'=>'nullable|numeric|min:0','survey_id'=>'nullable|exists:surveys,id','practice_cycle_id'=>'nullable|exists:practice_cycles,id','random_min'=>'nullable|integer','random_max'=>'nullable|integer','source_value'=>'nullable|string|max:1000','access_codes'=>'nullable|string','unlock_item_ids'=>'nullable|array','unlock_item_ids.*'=>'exists:content_items,id']);
+        return $request->validate(['learning_section_id'=>'required|exists:learning_sections,id','legacy_type'=>['required','integer',Rule::in(array_keys(self::LEGACY_TYPES))],'title'=>'nullable|string|max:255','body'=>'nullable|string','position'=>'nullable|integer|min:0','external_url'=>'nullable|url|max:1000','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from','repeat_limit'=>'nullable|integer|min:1','files'=>'nullable|array','files.*'=>'file|max:102400','file'=>'nullable|file|max:102400','extra_file'=>'nullable|file|max:102400','handler_file'=>'nullable|file|max:10240','certificate_name'=>'nullable|string|max:255','certificate_text'=>'nullable|string','certificate_hours'=>'nullable|integer|min:0','list_options'=>'nullable|string','price'=>'nullable|numeric|min:0','survey_id'=>'nullable|exists:surveys,id','practice_cycle_id'=>'nullable|exists:practice_cycles,id','random_min'=>'nullable|integer','random_max'=>'nullable|integer','source_value'=>'nullable|string|max:1000','access_codes'=>'nullable|string','unlock_item_ids'=>'nullable|array','unlock_item_ids.*'=>'exists:content_items,id','quiz_assignment_id'=>'nullable|exists:quiz_assignments,id']);
     }
 
     private function createItem(Request $request,array $data,array $map,$file=null): ContentItem
@@ -160,7 +161,7 @@ class ContentAdminController extends Controller
         if(!empty($data['access_codes']))$settings['access_codes']=$this->lines($data['access_codes']);
         if(!empty($data['unlock_item_ids']))$settings['unlock_item_ids']=array_values(array_unique(array_map('intval',$data['unlock_item_ids'])));
         $settings['password_required']=$request->boolean('password_required');
-        foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max','source_value'] as $key)if(array_key_exists($key,$data)&&$data[$key]!==null&&$data[$key]!=='')$settings[$key]=$data[$key];
+        foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max','source_value','quiz_assignment_id'] as $key)if(array_key_exists($key,$data)&&$data[$key]!==null&&$data[$key]!=='')$settings[$key]=$data[$key];
         if($legacy===18 && isset($settings['legacy_handler_path']))$settings['handler_execution']='disabled_for_security';
         $title=trim((string)($data['title'] ?? ''));if($title==='')$title=$file?pathinfo($file->getClientOriginalName(),PATHINFO_FILENAME):$map['name'];
         return ContentItem::create(['learning_section_id'=>$data['learning_section_id'],'title'=>$title,'type'=>$map['type'],'legacy_type'=>$legacy,'body'=>$data['body'] ?? null,'file_path'=>$filePath,'extra_file_path'=>$extraPath,'external_url'=>$data['external_url'] ?? (in_array($legacy,[2,12,13],true)?($data['source_value'] ?? null):null),'position'=>$data['position'] ?? 0,'available_from'=>$data['available_from'] ?? null,'available_until'=>$data['available_until'] ?? null,'repeat_limit'=>$data['repeat_limit'] ?? null,'is_required'=>$request->boolean('is_required'),'is_active'=>$request->boolean('is_active',true),'allow_duplicate'=>$request->boolean('allow_duplicate'),'flag'=>$request->boolean('flag'),'settings'=>$settings]);
