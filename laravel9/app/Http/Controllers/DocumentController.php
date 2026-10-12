@@ -9,6 +9,11 @@ class DocumentController extends Controller {
   $documents=EducationDocument::with('program')->where(function($q)use($request){$q->where('user_id',$request->user()->id)->orWhereNull('user_id');})->latest('issued_at')->get();
   return view('documents.index',compact('documents'));
  }
+ public function print(Request $request, EducationDocument $document){
+  abort_unless($document->user_id===null || $document->user_id===$request->user()->id,403);
+  $document->load(['user','program']);
+  return view('documents.print',compact('document'));
+ }
  public function download(Request $request, EducationDocument $document){
   abort_unless($document->user_id===null || $document->user_id===$request->user()->id,403);
   abort_unless($document->file_path && Storage::exists($document->file_path),404);
