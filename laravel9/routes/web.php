@@ -30,12 +30,12 @@ Route::middleware('auth')->group(function(){
  Route::get('/cabinet',[DashboardController::class,'index'])->name('dashboard');Route::get('/learning',[LearningController::class,'index'])->name('learning.index');Route::get('/learning/{section}',[LearningController::class,'show'])->name('learning.show');
  Route::get('/quizzes',[QuizController::class,'index'])->name('quizzes.index');Route::get('/quizzes/{assignment}',[QuizController::class,'show'])->name('quizzes.show');Route::post('/quizzes/{assignment}',[QuizController::class,'submit'])->name('quizzes.submit');
  Route::get('/practice',[PracticeController::class,'index'])->name('practice.index');Route::get('/documents',[DocumentController::class,'index'])->name('documents.index');Route::get('/documents/{document}/print',[DocumentController::class,'print'])->name('documents.print');Route::get('/forum',[ForumController::class,'index'])->name('forum.index');
- Route::prefix('curator')->name('curator.')->middleware('role:curator,admin')->group(function(){
+ Route::prefix('curator')->name('curator.')->middleware('role:curator')->group(function(){
   Route::get('/',[CuratorDashboard::class,'index'])->name('dashboard');
   Route::get('/students',[CuratorLegacy::class,'students'])->name('students');Route::get('/students/{enrollment}',[CuratorLegacy::class,'student'])->name('student');
   Route::get('/review',[AdminReview::class,'index'])->name('review');Route::patch('/review/submission/{submission}',[AdminReview::class,'submission'])->name('review.submission');Route::patch('/review/final/{finalWork}',[AdminReview::class,'finalWork'])->name('review.final');Route::patch('/review/content/{response}',[AdminReview::class,'contentResponse'])->name('review.content');
   Route::get('/attendance',[CuratorLegacy::class,'attendance'])->name('attendance');Route::post('/attendance/{enrollment}',[CuratorLegacy::class,'markAttendance'])->name('attendance.mark');Route::get('/practice',[CuratorLegacy::class,'practice'])->name('practice');Route::get('/files',[CuratorLegacy::class,'files'])->name('files');
-  Route::get('/content',[CuratorLegacy::class,'content'])->name('content');Route::post('/content/{section}',[CuratorLegacy::class,'storeContent'])->name('content.store');Route::patch('/content/{item}',[CuratorLegacy::class,'updateContent'])->name('content.update');
+  Route::get('/content',[CuratorLegacy::class,'content'])->name('content');
   Route::get('/documents',[CuratorLegacy::class,'documents'])->name('documents');Route::get('/legacy-file/{record}',[CuratorLegacy::class,'downloadLegacy'])->name('legacy.download');
   Route::get('/announcements',[CuratorLegacy::class,'announcements'])->name('announcements');Route::post('/announcements',[CuratorLegacy::class,'storeAnnouncement'])->name('announcements.store');
   Route::get('/logins',[CuratorLegacy::class,'logins'])->name('logins');Route::get('/surveys',[CuratorLegacy::class,'surveys'])->name('surveys');
