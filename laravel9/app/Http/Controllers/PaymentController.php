@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{ContentItem,ContentItemEntitlement,Enrollment,PaymentTransaction};
+use App\Models\{ContentItem,ContentItemEntitlement,Enrollment,NmoActivityLog,PaymentTransaction};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -31,6 +31,7 @@ class PaymentController extends Controller
             'payload'=>['unlock_item_ids'=>$targets],
         ]);
 
+        NmoActivityLog::create(['user_id'=>$request->user()->id,'program_id'=>$item->section->program_id,'learning_section_id'=>$item->section->id,'content_item_id'=>$item->id,'action'=>'payment_start','label'=>'Начал оплату учебного блока','meta'=>['transaction_id'=>$tx->id,'amount'=>$amount],'ip'=>$request->ip()]);
         $sum=number_format($amount,2,'.','');
         $shp='Shp_item='.$item->id;
         $signature=md5($merchant.':'.$sum.':'.$tx->id.':'.$password.':'.$shp);
@@ -78,6 +79,7 @@ class PaymentController extends Controller
                 );
             }
             $tx->update(['status'=>'paid','paid_at'=>now(),'payload'=>array_merge($tx->payload?:[],['callback'=>$request->except(['SignatureValue'])])]);
+            NmoActivityLog::create(['user_id'=>$tx->user_id,'program_id'=>$item->section->program_id,'learning_section_id'=>$item->section->id,'content_item_id'=>$item->id,'action'=>'payment_paid','label'=>'Оплата учебного блока подтверждена','meta'=>['transaction_id'=>$tx->id,'amount'=>(float)$tx->amount],'ip'=>$request->ip()]);
         });
 
         return response('OK'.$inv,200)->header('Content-Type','text/plain; charset=UTF-8');
