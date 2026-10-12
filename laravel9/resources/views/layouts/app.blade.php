@@ -1,1 +1,97 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>@yield('title','ДПО')</title><link href="{{asset('css/app.css')}}" rel="stylesheet"><style>body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f7fb;color:#172033}.shell{display:grid;grid-template-columns:270px 1fr;min-height:100vh}.side{background:#172033;color:#fff;padding:24px 16px;overflow:auto}.side a{display:block;color:#dbe5f5;text-decoration:none;padding:9px 13px;border-radius:9px;margin:2px 0}.side a:hover{background:#263752}.side a.primary-admin{background:#215dcc;color:#fff;font-weight:800;margin:8px 0 10px}.brand{font-size:21px;font-weight:800;margin:0 8px 22px}.main{padding:28px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 4px 20px #1d2a3b0d;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.btn{display:inline-block;border:0;border-radius:8px;padding:9px 13px;background:#215dcc;color:#fff;text-decoration:none;cursor:pointer}.btn.gray{background:#667085}.btn.red{background:#b42318}input,select,textarea{box-sizing:border-box;width:100%;padding:9px 11px;border:1px solid #d0d5dd;border-radius:8px;background:#fff}label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #e6e9ef;vertical-align:top}.ok{background:#ecfdf3;padding:12px;border-radius:8px;margin-bottom:16px}.err{background:#fef3f2;padding:12px;border-radius:8px;margin-bottom:16px}@media(max-width:850px){.shell{grid-template-columns:1fr}.main{padding:16px}}</style></head><body><div class="shell"><aside class="side"><div class="brand">ZMUDPO</div><a href="{{route('dashboard')}}">Мой кабинет</a><a href="{{route('profile.show')}}">Профиль</a><a href="{{route('learning.index')}}">Обучение</a><a href="{{route('practice.index')}}">Практика</a><a href="{{route('final-works.index')}}">Итоговые работы</a><a href="{{route('student.schedule')}}">Расписание</a><a href="{{route('student.messages')}}">Куратор</a><a href="{{route('student.surveys')}}">Опросы</a><a href="{{route('student.resources')}}">Библиотека</a><a href="{{route('documents.index')}}">Мои документы</a><a href="{{route('history.index')}}">История обучения</a><a href="{{route('forum.index')}}">Форум</a>@if(in_array(auth()->user()->role,['curator','admin']))<hr><a href="{{route('curator.dashboard')}}">Кабинет куратора</a><a href="{{route('curator.messages')}}">Сообщения слушателей</a>@endif @if(auth()->user()->role==='admin')<hr><a href="{{route('admin.dashboard')}}">Администрирование</a><a class="primary-admin" href="{{route('admin.nmo.index')}}">Конструктор обучения (НМО/ДПО)</a><a href="{{route('admin.users.index')}}">Пользователи</a><a href="{{route('admin.programs.index')}}">Специальности и программы</a><a href="{{route('admin.program-types.index')}}">Типы специальностей</a><a href="{{route('admin.groups.index')}}">Группы</a><a href="{{route('admin.sections.index')}}">Учебные разделы</a><a href="{{route('admin.enrollments.index')}}">Назначения и доступ</a><a href="{{route('admin.quizzes.index')}}">Тестирование</a><a href="{{route('admin.review.index')}}">Проверка работ</a><a href="{{route('admin.documents.index')}}">Выдача документов</a><a href="{{route('admin.announcements.index')}}">Объявления</a><hr><a href="{{route('admin.legacy.index')}}"><b>Все legacy-функции</b></a>@endif<form method="post" action="{{route('logout')}}">@csrf<button class="btn gray" style="margin:20px 8px">Выйти</button></form></aside><main class="main"><div class="top"><h1>@yield('title')</h1><span>{{auth()->user()->full_name}}</span></div>@if(session('ok'))<div class="ok">{{session('ok')}}</div>@endif @if(session('success'))<div class="ok">{{session('success')}}</div>@endif @if($errors->any())<div class="err">@foreach($errors->all() as $e)<div>{{$e}}</div>@endforeach</div>@endif @yield('content')</main></div></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title','ДПО') · ZMUDPO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+</head>
+<body>
+<div id="ajax-progress"></div>
+<div class="app-shell">
+    <aside class="sidebar">
+        <a class="brand text-decoration-none" href="{{ route('dashboard') }}">
+            <span class="brand-mark">Z</span>
+            <span><strong>ZMUDPO</strong><small>ДПО / НМО</small></span>
+        </a>
+
+        <nav class="app-nav">
+            <div class="nav-caption">Обучение</div>
+            <a class="nav-link" href="{{route('dashboard')}}"><i class="bi bi-grid"></i><span>Мой кабинет</span></a>
+            <a class="nav-link" href="{{route('learning.index')}}"><i class="bi bi-mortarboard"></i><span>Обучение</span></a>
+            <a class="nav-link" href="{{route('quizzes.index')}}"><i class="bi bi-ui-checks"></i><span>Тестирование</span></a>
+            <a class="nav-link" href="{{route('practice.index')}}"><i class="bi bi-journal-check"></i><span>Практика</span></a>
+            <a class="nav-link" href="{{route('final-works.index')}}"><i class="bi bi-award"></i><span>Итоговые работы</span></a>
+
+            <div class="nav-caption">Сервисы</div>
+            <a class="nav-link" href="{{route('student.schedule')}}"><i class="bi bi-calendar3"></i><span>Расписание</span></a>
+            <a class="nav-link" href="{{route('student.messages')}}"><i class="bi bi-chat-dots"></i><span>Куратор</span></a>
+            <a class="nav-link" href="{{route('student.surveys')}}"><i class="bi bi-card-checklist"></i><span>Опросы</span></a>
+            <a class="nav-link" href="{{route('student.resources')}}"><i class="bi bi-collection"></i><span>Библиотека</span></a>
+            <a class="nav-link" href="{{route('documents.index')}}"><i class="bi bi-file-earmark-text"></i><span>Документы</span></a>
+            <a class="nav-link" href="{{route('history.index')}}"><i class="bi bi-clock-history"></i><span>История</span></a>
+            <a class="nav-link" href="{{route('profile.show')}}"><i class="bi bi-person"></i><span>Профиль</span></a>
+
+            @if(in_array(auth()->user()->role,['curator','admin']))
+                <div class="nav-caption">Куратор</div>
+                <a class="nav-link" href="{{route('curator.dashboard')}}"><i class="bi bi-speedometer2"></i><span>Кабинет куратора</span></a>
+                <a class="nav-link" href="{{route('curator.students')}}"><i class="bi bi-people"></i><span>Слушатели</span></a>
+                <a class="nav-link" href="{{route('curator.review')}}"><i class="bi bi-check2-square"></i><span>Проверка работ</span></a>
+                <a class="nav-link" href="{{route('curator.messages')}}"><i class="bi bi-chat-square-text"></i><span>Сообщения</span></a>
+                <a class="nav-link" href="{{route('curator.attendance')}}"><i class="bi bi-activity"></i><span>Посещаемость</span></a>
+                <a class="nav-link" href="{{route('curator.content')}}"><i class="bi bi-folder2-open"></i><span>Материалы</span></a>
+            @endif
+
+            @if(auth()->user()->role==='admin')
+                <div class="nav-caption">Администрирование</div>
+                <a class="nav-link nav-primary" href="{{route('admin.dashboard')}}"><i class="bi bi-sliders"></i><span>Панель управления</span></a>
+                <a class="nav-link nav-primary" href="{{route('admin.nmo.index')}}"><i class="bi bi-diagram-3"></i><span>Конструктор НМО/ДПО</span></a>
+                <a class="nav-link" href="{{route('admin.users.index')}}"><i class="bi bi-person-gear"></i><span>Пользователи</span></a>
+                <a class="nav-link" href="{{route('admin.programs.index')}}"><i class="bi bi-journals"></i><span>Программы</span></a>
+                <a class="nav-link" href="{{route('admin.groups.index')}}"><i class="bi bi-people-fill"></i><span>Группы</span></a>
+                <a class="nav-link" href="{{route('admin.enrollments.index')}}"><i class="bi bi-person-check"></i><span>Назначения</span></a>
+                <a class="nav-link" href="{{route('admin.quizzes.index')}}"><i class="bi bi-patch-question"></i><span>Тесты</span></a>
+                <a class="nav-link" href="{{route('admin.review.index')}}"><i class="bi bi-clipboard-check"></i><span>Проверка</span></a>
+                <a class="nav-link" href="{{route('admin.documents.index')}}"><i class="bi bi-file-earmark-medical"></i><span>Документы</span></a>
+                <a class="nav-link" href="{{route('admin.announcements.index')}}"><i class="bi bi-megaphone"></i><span>Объявления</span></a>
+                <a class="nav-link" href="{{route('admin.legacy.index')}}"><i class="bi bi-tools"></i><span>Все legacy-функции</span></a>
+            @endif
+        </nav>
+
+        <form class="sidebar-logout" method="post" action="{{route('logout')}}" data-no-ajax>
+            @csrf
+            <button class="btn btn-outline-light w-100"><i class="bi bi-box-arrow-left me-2"></i>Выйти</button>
+        </form>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <button class="menu-button" data-sidebar-toggle aria-label="Меню"><i class="bi bi-list"></i></button>
+            <div>
+                <div class="top-title">@yield('page-title', @yield('title','Личный кабинет'))</div>
+                <div class="top-subtitle">ГАПОУ «Зеленодольский медицинский колледж»</div>
+            </div>
+            <div class="userbox">
+                <div><strong>{{auth()->user()->full_name}}</strong><small>{{ auth()->user()->role }}</small></div>
+                <a class="user-avatar" href="{{ route('profile.show') }}">{{ mb_strtoupper(mb_substr(auth()->user()->full_name ?: 'П',0,1)) }}</a>
+            </div>
+        </header>
+
+        <main class="content" data-ajax-root>
+            @if(session('ok'))<div class="alert alert-success alert-dismissible fade show">{{session('ok')}}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>@endif
+            @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{session('success')}}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>@endif
+            @if($errors->any())<div class="alert alert-danger"><strong>Проверьте данные:</strong><ul class="mb-0 mt-1">@foreach($errors->all() as $e)<li>{{$e}}</li>@endforeach</ul></div>@endif
+            @yield('content')
+        </main>
+    </div>
+</div>
+<div class="sidebar-backdrop" data-sidebar-toggle></div>
+<div id="ajax-toast-host" class="toast-container position-fixed top-0 end-0 p-3"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ asset('js/ajax-app.js') }}"></script>
+@stack('scripts')
+</body>
+</html>
