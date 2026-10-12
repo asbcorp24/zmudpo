@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function(){
     Route::put('/learning-practice-diary/{entry}',[LearningController::class,'updatePracticeDiary'])->name('learning.practice-diary.update');
     Route::get('/learning-content/{item}/certificate',[LearningController::class,'certificate'])->name('learning.certificate');
     Route::get('/learning-content/{item}/media',[LearningController::class,'media'])->name('learning.media');
+    Route::get('/learning-content/{item}/extra',[LearningController::class,'downloadExtra'])->name('learning.extra');
     Route::get('/learning-content-response/{response}/download/{index?}',[LearningController::class,'downloadResponse'])->whereNumber('index')->name('learning.response.download');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
