@@ -50,7 +50,7 @@
   @if($item->file_path)
     <div class="ratio ratio-16x9 mt-3"><video controls preload="metadata" src="{{route('learning.media',$item)}}" style="width:100%;height:100%;background:#000"></video></div>
   @elseif($item->external_url)
-    <div class="mt-3"><a class="btn btn-primary" target="_blank" rel="noopener" href="{{$item->external_url}}">Посмотреть видео ↗</a></div>
+    <div class="mt-3"><a class="btn btn-primary" target="_blank" rel="noopener" href="{{route('learning.external',$item)}}">Посмотреть видео ↗</a></div>
   @endif
 @endif
 @if(!empty($set['list_options']))<div class="mt-2"><strong>Варианты:</strong><ol>@foreach($set['list_options'] as $option)<li>{{$option}}</li>@endforeach</ol></div>@endif
@@ -71,7 +71,7 @@
 @if($packageRoot && $packageEntry)<a class="btn btn-primary" target="_blank" rel="noopener" href="{{ route('learning.package',['item'=>$item,'path'=>$packageEntry]) }}">Открыть интерактивный материал ↗</a>
 @elseif($item->file_path && !in_array((int)$item->legacy_type,[2,7],true))<a class="btn btn-outline-primary" data-no-ajax href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
 @if((int)$item->legacy_type===19 && $item->file_path)<a class="btn btn-primary" href="{{route('learning.table',$item)}}">Открыть таблицу</a>@endif
-@if($item->external_url)<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="{{ $item->external_url }}">Открыть ресурс ↗</a>@endif
+@if($item->external_url)<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="{{route('learning.external',$item)}}">Открыть ресурс ↗</a>@endif
 @if((int)$item->legacy_type===6)<a class="btn btn-primary" href="{{route('student.surveys',array_filter(['survey'=>data_get($set,'survey_id')]))}}">Перейти к анкете</a>@endif
 @if((int)$item->legacy_type===16)<a class="btn btn-primary" href="{{route('learning.practice-diary',$item)}}">Перейти к заполнению дневника</a>@endif
 @if((int)$item->legacy_type===11)<span class="badge-soft">Оплата@if(isset($set['price'])): {{number_format((float)$set['price'],2,',',' ')}} ₽@endif</span>@endif
