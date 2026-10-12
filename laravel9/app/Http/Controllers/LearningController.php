@@ -65,6 +65,23 @@ class LearningController extends Controller {
 
  public function complete(Request $request,LearningSection $section,LearningAccessService $access){
   abort_unless($access->canOpenSection($request->user(),$section),403);
+  $requiredItems=ContentItem::where('learning_section_id',$section->id)->where('is_active',1)->where('is_required',1)->get();
+  foreach($requiredItems as $item){
+   $legacy=(int)$item->legacy_type;
+   if(in_array($legacy,[4,10,17],true)){
+    $ok=ContentItemResponse::where('content_item_id',$item->id)->where('user_id',$request->user()->id)->where('status','accepted')->exists();
+    abort_unless($ok,422,'Не приняты все обязательные работы раздела.');
+   }
+   if(in_array($legacy,[3,15,18,21,22],true) && data_get($item->settings,'quiz_assignment_id')){
+    $ok=QuizAttempt::where('quiz_assignment_id',data_get($item->settings,'quiz_assignment_id'))->where('user_id',$request->user()->id)->where('passed',1)->exists();
+    abort_unless($ok,422,'Не пройдены все обязательные тесты раздела.');
+   }
+  }
+  $practiceIds=PracticeAssignment::where('learning_section_id',$section->id)->where('is_active',1)->pluck('id');
+  if($practiceIds->isNotEmpty()){
+   $accepted=Submission::where('user_id',$request->user()->id)->whereIn('practice_assignment_id',$practiceIds)->whereIn('status',['accepted','passed'])->distinct('practice_assignment_id')->count('practice_assignment_id');
+   abort_unless($accepted===$practiceIds->count(),422,'Не приняты все практические задания раздела.');
+  }
   SectionProgress::updateOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>100,'completed_at'=>now()]);
   return back()->with('success','Раздел отмечен как пройденный.');
  }
@@ -76,7 +93,7 @@ class LearningController extends Controller {
   return Storage::download($item->file_path);
  }
  public function package(Request $request,ContentItem $item,LearningAccessService $access,?string $path=null){
-  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   $settings=$item->settings?:[];$root=$settings['package_root']??null;abort_unless($root,404);
   $relative=$path?:ltrim(str_replace($root.'/','',(string)$item->file_path),'/');
   $relative=str_replace('\\','/',$relative);abort_if(str_starts_with($relative,'/')||preg_match('/(^|\/)\.\.(\/|$)/',$relative),400);
@@ -102,7 +119,7 @@ class LearningController extends Controller {
  }
 
  public function table(Request $request,ContentItem $item,LearningAccessService $access){
-  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless((int)$item->legacy_type===19 && $item->file_path && Storage::exists($item->file_path),404);
   $raw=Storage::get($item->file_path);$rows=[];
   foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,';');}
@@ -122,7 +139,7 @@ class LearningController extends Controller {
  public function submitResponse(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   $legacy=(int)$item->legacy_type;
-  abort_unless(in_array($legacy,[4,7,10,17,20],true),422,'Этот тип материала не принимает ответ.');
+  abort_unless(in_array($legacy,[4,10,17,20],true),422,'Этот тип материала не принимает ответ.');
   $data=$request->validate([
    'text'=>['nullable','string','max:50000'],
    'file'=>['nullable','file','max:51200'],
