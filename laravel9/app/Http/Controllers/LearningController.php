@@ -119,6 +119,15 @@ class LearningController extends Controller {
  }
 
 
+
+ public function media(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
+  abort_unless((int)$item->legacy_type===2 && $item->file_path && Storage::exists($item->file_path),404);
+  $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
+  $mime=match($ext){'mp4'=>'video/mp4','webm'=>'video/webm','ogg','ogv'=>'video/ogg','mov'=>'video/quicktime',default=>'application/octet-stream'};
+  return response(Storage::get($item->file_path),200,['Content-Type'=>$mime,'Content-Disposition'=>'inline']);
+ }
+
  public function practiceDiary(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless((int)$item->legacy_type===16,404);
