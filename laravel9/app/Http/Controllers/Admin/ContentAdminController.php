@@ -43,7 +43,7 @@ class ContentAdminController extends Controller
         $quizAssignments=$program?QuizAssignment::with('quiz')->where('program_id',$program->id)->orderBy('title')->get():collect();
         $legacyTypes = self::LEGACY_TYPES;
         if ($request->ajax()) return view('admin.legacy._nmo-workspace', compact('program','sections','programs','instructors','surveys','practiceCycles','allSections','quizAssignments','legacyTypes'));
-        return view('admin.legacy.learning-content', compact('programs','program','sections','instructors','surveys','practiceCycles','allSections','legacyTypes'));
+        return view('admin.legacy.learning-content', compact('programs','program','sections','instructors','surveys','practiceCycles','allSections','quizAssignments','legacyTypes'));
     }
 
     public function section(Request $request)
