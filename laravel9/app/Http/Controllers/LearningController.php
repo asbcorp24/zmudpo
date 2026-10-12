@@ -78,7 +78,7 @@ class LearningController extends Controller {
   $requiredItems=ContentItem::where('learning_section_id',$section->id)->where('is_active',1)->where('is_required',1)->get();
   foreach($requiredItems as $item){
    $legacy=(int)$item->legacy_type;
-   if(in_array($legacy,[4,10,17],true)){
+   if(in_array($legacy,[4,7,10,17],true)){
     $ok=ContentItemResponse::where('content_item_id',$item->id)->where('user_id',$request->user()->id)->where('status','accepted')->exists();
     abort_unless($ok,422,'Не приняты все обязательные работы раздела.');
    }
