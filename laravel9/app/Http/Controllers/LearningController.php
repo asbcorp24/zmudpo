@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{ContentItem,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
-use App\Services\LearningAccessService;
+use App\Models\{ContentItem,ContentItemEntitlement,ContentItemResponse,Enrollment,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 class LearningController extends Controller {
@@ -25,7 +25,11 @@ class LearningController extends Controller {
   $quizAttempts=QuizAttempt::where('user_id',$request->user()->id)->whereIn('quiz_assignment_id',$quizzes->pluck('id'))->latest('finished_at')->get()->groupBy('quiz_assignment_id');
   $practice=PracticeAssignment::where('program_id',$section->program_id)->where('learning_section_id',$section->id)->where('is_active',true)->get();
   $submissions=Submission::where('user_id',$request->user()->id)->whereIn('practice_assignment_id',$practice->pluck('id'))->get()->keyBy('practice_assignment_id');
-  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions'));
+  $responses=ContentItemResponse::where('user_id',$request->user()->id)->whereIn('content_item_id',$section->contentItems->pluck('id'))->get()->keyBy('content_item_id');
+  $paymentItems=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$section->program_id))->where('legacy_type',11)->where('is_active',true)->get();
+  $paymentTargets=collect();foreach($paymentItems as $pay){foreach((array)data_get($pay->settings,'unlock_item_ids',[]) as $targetId)$paymentTargets->put((int)$targetId,$pay);}
+  $entitledItemIds=ContentItemEntitlement::where('user_id',$request->user()->id)->whereIn('content_item_id',$paymentTargets->keys())->pluck('content_item_id');
+  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds'));
  }
  public function complete(Request $request,LearningSection $section,LearningAccessService $access){
   abort_unless($access->canOpenSection($request->user(),$section),403);
@@ -33,14 +37,14 @@ class LearningController extends Controller {
   return back()->with('success','Раздел отмечен как пройденный.');
  }
  public function download(Request $request,ContentItem $item,LearningAccessService $access){
-  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless($item->file_path && Storage::exists($item->file_path),404);
   $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
   if(in_array($ext,['html','htm'],true))return response(Storage::get($item->file_path),200,['Content-Type'=>'text/html; charset=UTF-8','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
   return Storage::download($item->file_path);
  }
  public function package(Request $request,ContentItem $item,LearningAccessService $access,?string $path=null){
-  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
   $settings=$item->settings?:[];$root=$settings['package_root']??null;abort_unless($root,404);
   $relative=$path?:ltrim(str_replace($root.'/','',(string)$item->file_path),'/');
   $relative=str_replace('\\','/',$relative);abort_if(str_starts_with($relative,'/')||preg_match('/(^|\/)\.\.(\/|$)/',$relative),400);
@@ -48,6 +52,103 @@ class LearningController extends Controller {
   $ext=strtolower(pathinfo($full,PATHINFO_EXTENSION));$mime=match($ext){'html','htm'=>'text/html; charset=UTF-8','js'=>'application/javascript','css'=>'text/css','json'=>'application/json','svg'=>'image/svg+xml','png'=>'image/png','jpg','jpeg'=>'image/jpeg','gif'=>'image/gif','webp'=>'image/webp','mp3'=>'audio/mpeg','mp4'=>'video/mp4','pdf'=>'application/pdf',default=>'application/octet-stream'};
   return response(Storage::get($full),200,['Content-Type'=>$mime,'X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
  }
+
+
+
+
+ public function unlock(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section');$this->authorizeItem($request,$item,$access);
+  $settings=$item->settings?:[];
+  if(empty($settings['password_required']))return back();
+  $data=$request->validate(['code'=>['required','string','max:255']]);
+  $codes=array_values(array_filter((array)($settings['access_codes']??[]),fn($v)=>trim((string)$v)!==''));
+  $needle=trim($data['code']);$index=array_search($needle,$codes,true);
+  if($index===false)return back()->withErrors(['code'=>'Код доступа неверный или уже использован.']);
+  array_splice($codes,$index,1);$settings['access_codes']=$codes;$item->settings=$settings;$item->save();
+  $request->session()->put('content_unlocked.'.$item->id,true);
+  return back()->with('ok','Материал разблокирован.');
+ }
+
+ public function table(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
+  abort_unless((int)$item->legacy_type===19 && $item->file_path && Storage::exists($item->file_path),404);
+  $raw=Storage::get($item->file_path);$rows=[];
+  foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,';');}
+  if($rows && count($rows[0])===1){$rows=[];foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,',');}}
+  return view('learning.table',compact('item','rows'));
+ }
+
+ public function completeProgram(Request $request,ContentItem $item,LearningAccessService $access,CompletionService $completion){
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
+  abort_unless((int)$item->legacy_type===5,422,'Этот элемент не завершает обучение.');
+  $enrollment=Enrollment::where('user_id',$request->user()->id)->where('program_id',$item->section->program_id)->where('status','active')->firstOrFail();
+  $enrollment->load('program');
+  $completion->complete($enrollment);
+  return redirect()->route('programs.show',$enrollment)->with('ok','Программа успешно завершена.');
+ }
+
+ public function submitResponse(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertUnlocked($request,$item);
+  $legacy=(int)$item->legacy_type;
+  abort_unless(in_array($legacy,[4,7,10,17,20],true),422,'Этот тип материала не принимает ответ.');
+  $data=$request->validate([
+   'text'=>['nullable','string','max:50000'],
+   'file'=>['nullable','file','max:51200'],
+   'files'=>['nullable','array','max:12'],
+   'files.*'=>['file','max:51200'],
+   'action'=>['nullable','string','max:30'],
+  ]);
+  $response=ContentItemResponse::firstOrNew(['content_item_id'=>$item->id,'user_id'=>$request->user()->id]);
+  $meta=$response->meta?:[];
+  if($legacy===20){
+   if(!isset($meta['random_value']) || $request->input('action')==='reroll'){
+    $set=$item->settings?:[];$min=(int)($set['random_min']??1);$max=(int)($set['random_max']??100);if($max<$min){$t=$min;$min=$max;$max=$t;}
+    $meta['random_value']=random_int($min,$max);$meta['generated_at']=now()->toIso8601String();
+   }
+   $response->meta=$meta;$response->status='submitted';$response->submitted_at=now();$response->save();
+   return back()->with('ok','Случайное значение закреплено за вами: '.$meta['random_value']);
+  }
+  if($request->hasFile('file')){
+   if($response->file_path)Storage::delete($response->file_path);
+   $response->file_path=$request->file('file')->store('content-responses/'.$request->user()->id.'/'.$item->id);
+  }
+  if($request->hasFile('files')){
+   foreach((array)$response->files as $old)if(is_string($old))Storage::delete($old);
+   $paths=[];foreach($request->file('files',[]) as $file)$paths[]=$file->store('content-responses/'.$request->user()->id.'/'.$item->id);
+   $response->files=$paths;
+  }
+  $response->text=$data['text']??$response->text;
+  $response->status='submitted';$response->submitted_at=now();$response->reviewed_by=null;$response->reviewed_at=null;$response->review_comment=null;$response->save();
+  return back()->with('ok','Ответ сохранён и отправлен куратору.');
+ }
+
+ public function downloadResponse(Request $request,ContentItemResponse $response,int $index=-1){
+  $allowed=$response->user_id===$request->user()->id || $request->user()->isAdmin();
+  if(!$allowed && $request->user()->isCurator()){
+   $response->loadMissing('item.section');
+   $programId=$response->item?->section?->program_id;
+   $allowed=$programId && Enrollment::where('user_id',$response->user_id)->where('program_id',$programId)->where('curator_id',$request->user()->id)->exists();
+  }
+  abort_unless($allowed,403);
+  $path=$index>=0?($response->files[$index]??null):$response->file_path;abort_unless($path&&Storage::exists($path),404);
+  return Storage::download($path);
+ }
+
+
+
+ private function assertPaid(Request $request,ContentItem $item): void{
+  $item->loadMissing('section');
+  if(!$item->section)return;
+  $pay=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$item->section->program_id))
+   ->where('legacy_type',11)->where('is_active',true)->whereJsonContains('settings->unlock_item_ids',$item->id)->first();
+  if($pay && !ContentItemEntitlement::where('user_id',$request->user()->id)->where('content_item_id',$item->id)->exists())abort(402,'Материал доступен после оплаты.');
+ }
+
+ private function assertUnlocked(Request $request,ContentItem $item): void{
+  $settings=$item->settings?:[];
+  if(!empty($settings['password_required']) && !$request->session()->get('content_unlocked.'.$item->id))abort(403,'Материал защищён одноразовым кодом доступа.');
+ }
+
  private function authorizeItem(Request $request,ContentItem $item,LearningAccessService $access):void{
   $section=$item->section;abort_unless($section&&$item->is_active&&$access->canOpenSection($request->user(),$section),403);
   if($item->available_from&&now()->lt($item->available_from))abort(403,'Материал ещё не открыт.');

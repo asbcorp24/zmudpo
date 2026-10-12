@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Enrollment,Submission,FinalWork};
+use App\Models\{ContentItemResponse,Enrollment,Submission,FinalWork};
 use App\Services\ProgramProgressService;
 use Illuminate\Http\Request;
 
@@ -13,6 +13,7 @@ class ReviewController extends Controller
         $user=$request->user();
         $submissions=Submission::with('user','practiceAssignment')->where('status','submitted');
         $finalWorks=FinalWork::with('user','enrollment.program')->where('status','submitted');
+        $contentResponses=ContentItemResponse::with(['user','item.section.program'])->where('status','submitted');
         if(!$user->isAdmin()){
             $enrollments=Enrollment::where('curator_id',$user->id)->get(['user_id','program_id','id']);
             $studentIds=$enrollments->pluck('user_id');
@@ -20,8 +21,9 @@ class ReviewController extends Controller
             $enrollmentIds=$enrollments->pluck('id');
             $submissions->whereIn('user_id',$studentIds)->whereHas('practiceAssignment',fn($q)=>$q->whereIn('program_id',$programIds));
             $finalWorks->whereIn('enrollment_id',$enrollmentIds);
+            $contentResponses->whereIn('user_id',$studentIds)->whereHas('item.section',fn($q)=>$q->whereIn('program_id',$programIds));
         }
-        return view('admin.review.index',['submissions'=>$submissions->latest()->get(),'finalWorks'=>$finalWorks->latest()->get()]);
+        return view('admin.review.index',['submissions'=>$submissions->latest()->get(),'finalWorks'=>$finalWorks->latest()->get(),'contentResponses'=>$contentResponses->latest('submitted_at')->get()]);
     }
 
     public function submission(Request $r,Submission $submission,ProgramProgressService $progress)
@@ -32,6 +34,19 @@ class ReviewController extends Controller
         $submission->update($d+['reviewed_by'=>$r->user()->id,'reviewed_at'=>now()]);
         $progress->calculate($enrollment);
         return back()->with('ok','Практическая работа проверена');
+    }
+
+
+    public function contentResponse(Request $r,ContentItemResponse $response,ProgramProgressService $progress)
+    {
+        $response->loadMissing('item.section');
+        $programId=$response->item?->section?->program_id;
+        $enrollment=Enrollment::where('user_id',$response->user_id)->where('program_id',$programId)->firstOrFail();
+        abort_unless($r->user()->isAdmin() || $enrollment->curator_id===$r->user()->id,403);
+        $d=$r->validate(['status'=>'required|in:accepted,rejected,revision','score'=>'nullable|numeric','review_comment'=>'nullable|string|max:10000']);
+        $response->update($d+['reviewed_by'=>$r->user()->id,'reviewed_at'=>now()]);
+        $progress->calculate($enrollment);
+        return back()->with('ok','Ответ на учебный материал проверен');
     }
 
     public function finalWork(Request $r,FinalWork $finalWork,ProgramProgressService $progress)

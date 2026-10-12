@@ -70,7 +70,7 @@ class StudentServicesController extends Controller
 
     public function surveys(Request $request)
     {
-        $surveys=Survey::with(['fields'=>fn($q)=>$q->orderBy('position')])->where('is_active',true)->get();
+        $surveys=Survey::with(['fields'=>fn($q)=>$q->orderBy('position')])->where('is_active',true)->when($request->filled('survey'),fn($q)=>$q->whereKey($request->integer('survey')))->get();
         $responses=SurveyResponse::where('user_id',$request->user()->id)->get()->keyBy('survey_field_id');
         return view('student-services.surveys',compact('surveys','responses'));
     }

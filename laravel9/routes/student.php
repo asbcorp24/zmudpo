@@ -27,6 +27,11 @@ Route::middleware('auth')->group(function(){
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
     Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
     Route::get('/learning-content/{item}/package/{path?}',[LearningController::class,'package'])->where('path','.*')->name('learning.package');
+    Route::post('/learning-content/{item}/response',[LearningController::class,'submitResponse'])->name('learning.response');
+    Route::post('/learning-content/{item}/unlock',[LearningController::class,'unlock'])->name('learning.unlock');
+    Route::post('/learning-content/{item}/complete-program',[LearningController::class,'completeProgram'])->name('learning.complete-program');
+    Route::get('/learning-content/{item}/table',[LearningController::class,'table'])->name('learning.table');
+    Route::get('/learning-content-response/{response}/download/{index?}',[LearningController::class,'downloadResponse'])->whereNumber('index')->name('learning.response.download');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
 
