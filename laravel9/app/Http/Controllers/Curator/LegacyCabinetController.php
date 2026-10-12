@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Curator;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Announcement,ContentItem,Enrollment,Group,LearningSection,LearningSectionProgress,LegacyCuratorRecord,QuizAttempt,SectionProgress,Submission,FinalWork,Survey,SurveyResponse};
+use App\Models\{Announcement,ContentItem,ContentItemResponse,Enrollment,Group,LearningSection,LearningSectionProgress,LegacyCuratorRecord,QuizAttempt,SectionProgress,Submission,FinalWork,Survey,SurveyResponse};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -36,9 +36,25 @@ class LegacyCabinetController extends Controller
     public function announcements(Request $r){$pids=$this->programIds($r);$items=Announcement::with('program')->where(fn($q)=>$q->whereNull('program_id')->orWhereIn('program_id',$pids))->latest('published_at')->paginate(50);return view('curator.announcements',compact('items')+['programs'=>$this->enrollments($r)->get()->pluck('program','program_id')->filter()]);}
     public function storeAnnouncement(Request $r){$d=$r->validate(['title'=>'required|string|max:255','body'=>'required|string','program_id'=>'required|exists:programs,id','published_at'=>'nullable|date']);abort_unless($r->user()->isAdmin()||$this->programIds($r)->contains((int)$d['program_id']),403);Announcement::create($d+['author_id'=>$r->user()->id,'is_active'=>true,'published_at'=>$d['published_at']??now()]);return back()->with('ok','Объявление опубликовано.');}
 
-    public function logins(Request $r){$enrollments=$this->enrollments($r)->get();$ids=$enrollments->pluck('user_id');$items=Schema::hasTable('login_activities')?DB::table('login_activities')->whereIn('user_id',$ids)->latest('logged_in_at')->paginate(100):null;return view('curator.logins',compact('enrollments','items'));}
+    public function logins(Request $r){
+        $enrollments=$this->enrollments($r)->get();$ids=$enrollments->pluck('user_id');
+        $q=Schema::hasTable('login_activities')?DB::table('login_activities')->whereIn('user_id',$ids):null;
+        if($q&&$r->filled('ip'))$q->where('ip','like','%'.$r->string('ip')->toString().'%');
+        if($q&&$r->filled('date_from'))$q->whereDate('logged_in_at','>=',$r->date('date_from'));
+        if($q&&$r->filled('date_to'))$q->whereDate('logged_in_at','<=',$r->date('date_to'));
+        $items=$q?$q->latest('logged_in_at')->paginate(100)->withQueryString():null;
+        $legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::with('user')->where('type','login')->whereIn('user_id',$ids)->latest('occurred_at')->paginate(100,'*','legacy_page'):null;
+        $duplicates=Schema::hasTable('login_activities')?DB::table('login_activities')->whereIn('user_id',$ids)->whereNotNull('ip')->selectRaw('ip,count(distinct user_id) users_count,count(*) logins_count')->groupBy('ip')->havingRaw('count(distinct user_id)>1')->orderByDesc('users_count')->limit(100)->get():collect();
+        return view('curator.logins',compact('enrollments','items','legacy','duplicates'));
+    }
     public function surveys(Request $r){$ids=$this->studentIds($r);$surveys=Survey::with('fields')->get();$responses=SurveyResponse::whereIn('user_id',$ids)->get()->groupBy('user_id');$students=$this->enrollments($r)->get()->pluck('user','user_id')->filter();return view('curator.surveys',compact('surveys','responses','students'));}
-    public function statistics(Request $r){$enrollments=$this->enrollments($r)->get();$ids=$enrollments->pluck('user_id');$pids=$enrollments->pluck('program_id');$quiz=QuizAttempt::whereIn('user_id',$ids)->whereHas('assignment',fn($q)=>$q->whereIn('program_id',$pids))->selectRaw('user_id,count(*) attempts,avg(percent) avg_percent,sum(case when passed=1 then 1 else 0 end) passed')->groupBy('user_id')->get()->keyBy('user_id');$practice=Submission::whereIn('user_id',$ids)->selectRaw("user_id,count(*) total,sum(case when status in ('accepted','passed') then 1 else 0 end) accepted")->groupBy('user_id')->get()->keyBy('user_id');return view('curator.statistics',compact('enrollments','quiz','practice'));}
+    public function statistics(Request $r){
+        $enrollments=$this->enrollments($r)->get();$ids=$enrollments->pluck('user_id');$pids=$enrollments->pluck('program_id');
+        $quiz=QuizAttempt::whereIn('user_id',$ids)->whereHas('assignment',fn($q)=>$q->whereIn('program_id',$pids))->selectRaw('user_id,count(*) attempts,avg(percent) avg_percent,sum(case when passed=1 then 1 else 0 end) passed')->groupBy('user_id')->get()->keyBy('user_id');
+        $practice=Submission::whereIn('user_id',$ids)->selectRaw("user_id,count(*) total,sum(case when status in ('accepted','passed') then 1 else 0 end) accepted")->groupBy('user_id')->get()->keyBy('user_id');
+        $content=ContentItemResponse::whereIn('user_id',$ids)->whereHas('item.section',fn($q)=>$q->whereIn('program_id',$pids))->selectRaw("user_id,count(*) total,sum(case when status='accepted' then 1 else 0 end) accepted,sum(case when status='submitted' then 1 else 0 end) pending")->groupBy('user_id')->get()->keyBy('user_id');
+        return view('curator.statistics',compact('enrollments','quiz','practice','content'));
+    }
     public function tables(Request $r){return $this->statistics($r);}
     public function groups(Request $r){return view('curator.groups',['items'=>$this->enrollments($r)->orderBy('group_id')->get(),'groups'=>Group::orderBy('name')->get()]);}
     public function updateGroup(Request $r,Enrollment $enrollment){$this->allowedEnrollment($r,$enrollment);$d=$r->validate(['group_id'=>'nullable|exists:groups,id']);$enrollment->update($d);return back()->with('ok','Группа слушателя изменена.');}
