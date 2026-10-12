@@ -8,7 +8,12 @@
  <div><strong>Согласие на обработку персональных данных</strong><div class="small">Для продолжения обучения подтвердите согласие.</div></div>
  <form method="post" action="{{route('learning.personal-data.accept')}}">@csrf<button class="btn btn-warning">Подтвердить</button></form>
 </div>
-@endif
+@else
+<div class="panel mb-4">
+ <div class="panel-head"><div><h2>Присутствие на занятии</h2><p class="text-secondary mb-0">Аналог отметки посещения раздела в старом NMO.</p></div>
+ <form method="post" action="{{route('learning.visit',$section)}}">@csrf<button class="btn btn-outline-primary">Я присутствую</button></form></div>
+ @if($sectionVisits->isNotEmpty())<div class="d-flex gap-2 flex-wrap">@foreach($sectionVisits as $visit)<span class="badge-soft">{{$visit->visited_at?->format('d.m.Y H:i:s')}}</span>@endforeach</div>@endif
+</div>
 @if($announcements->isNotEmpty())
 <div class="panel mb-4"><div class="panel-head"><h2>Объявления</h2></div>
 @foreach($announcements as $a)<div class="list-row"><div><strong>{{$a->title}}</strong><small>{{$a->body}}@if($a->author) · {{$a->author->full_name}}@endif</small></div>
@@ -24,7 +29,7 @@
 @endforeach</div></div>@endforeach
 </div>
 @endif
-<div class="panel"><div class="panel-head"><h2>Материалы</h2></div>
+<div class="panel"><div class="panel-head"><h2>Материалы</h2><div class="btn-group btn-group-sm" role="group"><button type="button" class="btn btn-outline-secondary active" data-nmo-filter="all">Лекции / практика</button><button type="button" class="btn btn-outline-secondary" data-nmo-filter="lecture">Лекции</button><button type="button" class="btn btn-outline-secondary" data-nmo-filter="practice">Практика</button></div></div>
 @forelse($section->contentItems as $item)
 @php($set=$item->settings?:[])
 @php($packageRoot=$set['package_root']??null)
@@ -34,7 +39,7 @@
 @php($paymentItem=$paymentTargets->get($item->id))
 @php($paymentLocked=$paymentItem&&!$entitledItemIds->contains($item->id))
 @php($locked=$codeLocked||$paymentLocked)
-<article class="content-item"><div class="content-icon">{{ strtoupper(substr($item->type ?? 'M',0,2)) }}</div><div style="width:100%"><h3>{{ $item->title }}</h3>
+<article class="content-item" data-lesson-kind="{{data_get($set,'lesson_kind','all')}}"><div class="content-icon">{{ strtoupper(substr($item->type ?? 'M',0,2)) }}</div><div style="width:100%"><h3>{{ $item->title }}</h3>
 @if($paymentLocked)
 <div class="response-box mt-3"><div class="d-flex justify-content-between gap-3 align-items-center flex-wrap"><div><strong>Платный учебный блок</strong><div class="text-secondary small">Для доступа требуется оплата@if(data_get($paymentItem->settings,'price')) · {{number_format((float)data_get($paymentItem->settings,'price'),2,',',' ')}} ₽@endif</div></div><form method="post" action="{{route('payments.content.start',$paymentItem)}}" data-no-ajax>@csrf<button class="btn btn-primary" type="submit">Оплатить и открыть</button></form></div></div>
 @elseif($codeLocked)
@@ -99,7 +104,12 @@
 @endif
 </div></article>
 @empty<p class="empty">Материалы пока не добавлены или сейчас недоступны.</p>@endforelse</div>
-@if($quizzes->isNotEmpty())<div class="panel mt-4"><div class="panel-head"><h2>Тесты раздела</h2></div>@foreach($quizzes as $quiz) @php($last=$quizAttempts->get($quiz->id)?->first()) <div class="list-row"><div><strong>{{ $quiz->title }}</strong><small>Проходной балл {{ $quiz->pass_percent }}%@if($last) · последняя попытка {{ number_format($last->percent,0) }}%@endif</small></div><a class="btn btn-sm btn-primary" href="{{ route('quizzes.show',$quiz) }}">{{ $last?'Повторить':'Пройти' }}</a></div>@endforeach</div>@endif
+@php($standaloneQuizzes=$quizzes->reject(fn($q)=>$linkedQuizIds->contains($q->id)))
+@if($standaloneQuizzes->isNotEmpty())<div class="panel mt-4"><div class="panel-head"><h2>Тесты раздела</h2></div>@foreach($standaloneQuizzes as $quiz) @php($last=$quizAttempts->get($quiz->id)?->first()) <div class="list-row"><div><strong>{{ $quiz->title }}</strong><small>Проходной балл {{ $quiz->pass_percent }}%@if($last) · последняя попытка {{ number_format($last->percent,0) }}%@endif</small></div><a class="btn btn-sm btn-primary" href="{{ route('quizzes.show',$quiz) }}">{{ $last?'Повторить':'Пройти' }}</a></div>@endforeach</div>@endif
 @if($practice->isNotEmpty())<div class="panel mt-4"><div class="panel-head"><h2>Практические задания</h2></div>@foreach($practice as $a) @php($submission=$submissions->get($a->id)) <div class="list-row"><div><strong>{{ $a->title }}</strong><small>{{ $submission?->status ?: 'не отправлено' }}@if($a->ends_at) · срок {{ $a->ends_at->format('d.m.Y') }}@endif</small></div><a class="btn btn-sm btn-primary" href="{{ route('practice.index') }}">Открыть</a></div>@endforeach</div>@endif
 @if(!$progress->completed_at)<form class="mt-3" method="post" action="{{ route('learning.complete',$section) }}">@csrf<button class="btn btn-success">Отметить раздел пройденным</button></form>@else<div class="alert alert-success mt-3">Раздел завершён {{ $progress->completed_at->format('d.m.Y H:i') }}.</div>@endif
+<script>
+(()=>{const buttons=document.querySelectorAll('[data-nmo-filter]'),items=document.querySelectorAll('[data-lesson-kind]');buttons.forEach(btn=>btn.addEventListener('click',()=>{const mode=btn.dataset.nmoFilter;buttons.forEach(x=>x.classList.toggle('active',x===btn));items.forEach(item=>{const kind=item.dataset.lessonKind||'all';item.hidden=!(mode==='all'||kind==='all'||kind===mode)})}))})();
+</script>
+@endif
 @endsection
