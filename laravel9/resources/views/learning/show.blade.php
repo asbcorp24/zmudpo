@@ -15,7 +15,8 @@
 @if(in_array((int)$item->legacy_type,[15,22],true) && (!empty($set['certificate_name'])||!empty($set['certificate_hours'])))<div class="alert alert-info mt-2"><strong>{{$set['certificate_name']??'Сертификат'}}</strong>@if(!empty($set['certificate_hours'])) · {{$set['certificate_hours']}} ч.@endif @if(!empty($set['certificate_text']))<div>{{$set['certificate_text']}}</div>@endif</div>@endif
 <div class="d-flex gap-2 flex-wrap mt-2">
 @if($packageRoot && $packageEntry)<a class="btn btn-primary" target="_blank" rel="noopener" href="{{ route('learning.package',['item'=>$item,'path'=>$packageEntry]) }}">Открыть интерактивный материал ↗</a>
-@elseif($item->file_path)<a class="btn btn-outline-primary" href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
+@elseif($item->file_path)<a class="btn btn-outline-primary" data-no-ajax href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
+@if((int)$item->legacy_type===19 && $item->file_path)<a class="btn btn-primary" href="{{route('learning.table',$item)}}">Открыть таблицу</a>@endif
 @if($item->external_url)<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="{{ $item->external_url }}">Открыть ресурс ↗</a>@endif
 @if((int)$item->legacy_type===6)<a class="btn btn-primary" href="{{route('student.surveys')}}">Перейти к анкете</a>@endif
 @if((int)$item->legacy_type===16)<a class="btn btn-primary" href="{{route('practice.index')}}">Перейти к практике</a>@endif
