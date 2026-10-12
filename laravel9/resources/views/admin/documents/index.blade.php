@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title','Выдача документов')
 @section('content')
-<div class="page-heading"><div><h1>Выдача документов</h1><p>Удостоверения, дипломы, сертификаты и печатные формы после завершения обучения.</p></div></div>
+<div class="page-heading"><div><h1>Выдача документов</h1><p>Удостоверения, дипломы, сертификаты и печатные формы после завершения обучения.</p></div><div class="d-flex gap-2"><a class="btn btn-outline-primary" href="{{route('admin.document-templates.index')}}">Шаблоны</a><a class="btn btn-outline-primary" href="{{route('admin.reports.index')}}">Отчёты</a></div></div>
 
 <div class="panel mb-4">
  <div class="panel-head"><h2>Выдать документ</h2></div>
@@ -9,6 +9,7 @@
   <div class="grid">
    <div><label>Слушатель / программа</label><select class="form-select" id="enr" required><option value="">Выберите...</option>@foreach($completed as $e)<option data-u="{{$e->user_id}}" data-p="{{$e->program_id}}">{{$e->user?->full_name}} — {{$e->program?->title}}</option>@endforeach</select><input type="hidden" id="uid" name="user_id"><input type="hidden" id="pid" name="program_id"></div>
    <div><label>Тип</label><select class="form-select" name="type"><option value="certificate">Удостоверение</option><option value="diploma">Диплом</option><option value="certificate_nmo">Сертификат НМО</option><option value="statement">Выписка</option><option value="other">Другой документ</option></select></div>
+<div><label>Шаблон</label><select class="form-select" name="certificate_template_id"><option value="">Автоматически по типу</option>@foreach($templates as $t)<option value="{{$t->id}}">{{$t->name}}</option>@endforeach</select></div>
    <div><label>Название</label><input class="form-control" name="title" required value="Документ об обучении"></div>
    <div><label>Номер документа</label><input class="form-control" name="number"></div>
    <div><label>Регистрационный номер</label><input class="form-control" name="registration_number"></div>
