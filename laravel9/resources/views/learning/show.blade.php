@@ -20,6 +20,7 @@
 @if((int)$item->legacy_type===6)<a class="btn btn-primary" href="{{route('student.surveys')}}">Перейти к анкете</a>@endif
 @if((int)$item->legacy_type===16)<a class="btn btn-primary" href="{{route('practice.index')}}">Перейти к практике</a>@endif
 @if((int)$item->legacy_type===11)<span class="badge-soft">Оплата@if(isset($set['price'])): {{number_format((float)$set['price'],2,',',' ')}} ₽@endif</span>@endif
+@if((int)$item->legacy_type===5)<form method="post" action="{{route('learning.complete-program',$item)}}" class="d-inline">@csrf<button class="btn btn-success" type="submit">Завершить обучение</button></form>@endif
 @if((int)$item->legacy_type===20)
 @if(data_get($response?->meta,'random_value')!==null)
 <span class="badge-soft">Ваше значение: <strong>{{data_get($response->meta,'random_value')}}</strong></span>
