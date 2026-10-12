@@ -6,7 +6,7 @@
 </style>
 <div class="nmo-shell">
   <div class="nmo-hero"><div><div class="nmo-eyebrow" style="color:#a9bddc">Администрирование обучения</div><h2>Конструктор НМО / ДПО</h2><p>Полный современный аналог <b>add_nmo.php</b>: структура, материалы, тестовые пакеты, тетради, анкеты и управление доступом.</p></div><div class="nmo-program-select"><label>Специальность / программа</label><select id="programSelector">@foreach($programs as $p)<option value="{{$p->id}}" @selected($program?->id==$p->id)>{{$p->title}}</option>@endforeach</select></div></div>
-  <div id="nmoWorkspace">@include('admin.legacy._nmo-workspace',compact('program','sections','programs','instructors','surveys','practiceCycles','allSections','legacyTypes'))</div>
+  <div id="nmoWorkspace">@include('admin.legacy._nmo-workspace',compact('program','sections','programs','instructors','surveys','practiceCycles','allSections','quizAssignments','legacyTypes'))</div>
 </div>
 <div id="nmoToast" class="nmo-toast"></div>
 <script>
