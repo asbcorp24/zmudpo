@@ -57,7 +57,7 @@ Route::middleware('auth')->group(function(){
     });
 });
 
-Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator,admin'])->group(function(){
+Route::prefix('curator')->name('curator.')->middleware(['auth','role:curator'])->group(function(){
     Route::get('/messages',[CuratorMessageController::class,'index'])->name('messages');
     Route::post('/messages/{enrollment}',[CuratorMessageController::class,'send'])->name('messages.send');
     Route::get('/legacy-logins',[CuratorArchiveController::class,'logins'])->name('legacy-logins');
