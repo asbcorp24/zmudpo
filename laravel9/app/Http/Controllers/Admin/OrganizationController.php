@@ -5,7 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\{Enrollment,Group,OrganizationProfile,Program,User};
 use App\Services\AuditService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{DB,Hash};
+use Illuminate\Support\Facades\{DB,Hash,Password};
 use Illuminate\Support\Str;
 
 class OrganizationController extends Controller
@@ -88,13 +88,16 @@ class OrganizationController extends Controller
     {
         abort_unless($organization->is_legal_entity && $employee->parent_user_id===$organization->id,403);
         $d=$r->validate(['full_name'=>'required|string|max:255','email'=>'nullable|email|max:255','phone'=>'nullable|string|max:50','is_active'=>'nullable|boolean']);
+        $activate=$r->boolean('is_active')&&!$employee->is_active;
         $employee->update(['full_name'=>$d['full_name'],'email'=>$d['email']??null,'phone'=>$d['phone']??null,'is_active'=>$r->boolean('is_active')]);
-        return back()->with('ok','Данные сотрудника сохранены.');
+        if($activate&&$employee->email)Password::sendResetLink(['email'=>$employee->email]);
+        return back()->with('ok',$activate?'Сотрудник активирован. При наличии e-mail отправлена ссылка установки пароля.':'Данные сотрудника сохранены.');
     }
 
     public function employeeDelete(User $organization,User $employee)
     {
         abort_unless($organization->is_legal_entity && $employee->parent_user_id===$organization->id,403);
+        abort_if($employee->is_active,422,'Активного сотрудника нельзя удалить. Сначала отключите доступ.');
         abort_if($employee->enrollments()->whereIn('status',['completed'])->exists(),422,'Завершившего обучение сотрудника нельзя удалить.');
         $employee->delete();
         return back()->with('ok','Сотрудник удалён.');
