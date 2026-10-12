@@ -10,7 +10,7 @@ class ProgramProgressService {
   $practicePct=$practiceIds->isEmpty()?100:(Submission::where('user_id',$e->user_id)->whereIn('practice_assignment_id',$practiceIds)->whereIn('status',['accepted','passed'])->distinct('practice_assignment_id')->count('practice_assignment_id')/$practiceIds->count()*100);
 
   $contentIds=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$e->program_id)->where('is_active',1))
-   ->where('is_active',1)->where('is_required',1)->whereIn('legacy_type',[4,7,10,17])->pluck('id');
+   ->where('is_active',1)->where('is_required',1)->whereIn('legacy_type',[4,10,17])->pluck('id');
   $contentPct=$contentIds->isEmpty()?100:(ContentItemResponse::where('user_id',$e->user_id)->whereIn('content_item_id',$contentIds)->where('status','accepted')->count()/$contentIds->count()*100);
 
   $quizIds=QuizAssignment::where('program_id',$e->program_id)->where('is_active',1)->where('is_required',1)->pluck('id');
