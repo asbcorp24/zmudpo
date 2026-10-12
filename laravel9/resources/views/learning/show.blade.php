@@ -3,6 +3,27 @@
 @section('page-title','Учебный раздел')
 @section('content')
 <div class="page-heading"><div><a class="back-link" href="{{ route('learning.index') }}">← Все разделы</a><h1>{{ $section->title }}</h1><p>{{ $section->description }}</p></div><div class="badge-soft">{{ number_format((float)$progress->progress_percent,0) }}% пройдено</div></div>
+@if(!auth()->user()->personal_data_consent_at)
+<div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap">
+ <div><strong>Согласие на обработку персональных данных</strong><div class="small">Для продолжения обучения подтвердите согласие.</div></div>
+ <form method="post" action="{{route('learning.personal-data.accept')}}">@csrf<button class="btn btn-warning">Подтвердить</button></form>
+</div>
+@endif
+@if($announcements->isNotEmpty())
+<div class="panel mb-4"><div class="panel-head"><h2>Объявления</h2></div>
+@foreach($announcements as $a)<div class="list-row"><div><strong>{{$a->title}}</strong><small>{{$a->body}}@if($a->author) · {{$a->author->full_name}}@endif</small></div>
+@if(!$acknowledged->contains($a->id))<form method="post" action="{{route('learning.announcement.ack',$a)}}">@csrf<button class="btn btn-sm btn-primary">Прочитано</button></form>@else<span class="status completed">прочитано</span>@endif</div>@endforeach
+</div>
+@endif
+@if($instructorAssignments->isNotEmpty())
+<div class="panel mb-4"><div class="panel-head"><h2>Занятия с преподавателем</h2><a href="{{route('student.schedule')}}">Полное расписание</a></div>
+@foreach($instructorAssignments as $assignment)<div class="mb-3"><strong>{{$assignment->instructor?->full_name}}</strong>@if($assignment->subject)<span class="text-secondary"> · {{$assignment->subject}}</span>@endif
+<div class="d-flex gap-2 flex-wrap mt-2">@foreach($assignment->slots->take(8) as $slot)@php($cnt=(int)($slotCounts[$slot->id]??0))@php($booked=$bookedSlotIds->contains($slot->id))
+@if($booked)<form method="post" action="{{route('student.schedule.cancel',$slot)}}">@csrf @method('DELETE')<button class="btn btn-sm btn-success">{{$slot->date?->format('d.m')}} {{$slot->time}} · записан</button></form>
+@else<form method="post" action="{{route('student.schedule.book',$slot)}}">@csrf<button class="btn btn-sm btn-outline-primary" @disabled($slot->capacity && $cnt >= $slot->capacity)>{{$slot->date?->format('d.m')}} {{$slot->time}} @if($slot->capacity)({{$cnt}}/{{$slot->capacity}})@endif</button></form>@endif
+@endforeach</div></div>@endforeach
+</div>
+@endif
 <div class="panel"><div class="panel-head"><h2>Материалы</h2></div>
 @forelse($section->contentItems as $item)
 @php($set=$item->settings?:[])
@@ -40,7 +61,7 @@
 @endif
 @endif
 </div>
-@if(in_array((int)$item->legacy_type,[4,7,10,17],true))
+@if(in_array((int)$item->legacy_type,[4,10,17],true))
 <div class="response-box mt-3">
   <div class="d-flex justify-content-between gap-2 align-items-center flex-wrap mb-2">
     <strong>{{ match((int)$item->legacy_type){4=>'Ответ на контрольную',7=>'Файл / ответ',10=>'Решение задания',17=>'Рабочая тетрадь',default=>'Ответ'} }}</strong>
