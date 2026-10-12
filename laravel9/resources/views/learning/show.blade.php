@@ -9,6 +9,7 @@
 @php($packageRoot=$set['package_root']??null)
 @php($packageEntry=$packageRoot?ltrim(str_replace($packageRoot.'/','',(string)$item->file_path),'/'):null)
 @php($response=$responses->get($item->id))
+@php($locked=!empty($set['password_required'])&&!session('content_unlocked.'.$item->id))
 <article class="content-item"><div class="content-icon">{{ strtoupper(substr($item->type ?? 'M',0,2)) }}</div><div style="width:100%"><h3>{{ $item->title }}</h3>
 @if($item->body)<div class="content-body">{!! $item->body !!}</div>@endif
 @if(!empty($set['list_options']))<div class="mt-2"><strong>Варианты:</strong><ol>@foreach($set['list_options'] as $option)<li>{{$option}}</li>@endforeach</ol></div>@endif
