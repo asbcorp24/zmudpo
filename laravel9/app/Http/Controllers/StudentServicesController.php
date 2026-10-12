@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{CuratorMessage,Enrollment,InstructorProgram,InstructorSlot,ResourceLibrary,Survey,SurveyResponse};
+use App\Models\{CuratorMessage,Enrollment,InstructorProgram,InstructorSlot,NmoActivityLog,ResourceLibrary,Survey,SurveyResponse};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -59,12 +59,15 @@ class StudentServicesController extends Controller
             }
             DB::table('instructor_slot_user')->insert(['slot_id'=>$slot->id,'user_id'=>$request->user()->id,'created_at'=>now(),'updated_at'=>now()]);
         });
+        NmoActivityLog::create(['user_id'=>$request->user()->id,'program_id'=>$assignment->program_id,'action'=>'instructor_booking','label'=>'Записался к преподавателю','meta'=>['slot_id'=>$slot->id,'date'=>optional($slot->date)->format('Y-m-d'),'time'=>$slot->time],'ip'=>$request->ip()]);
         return back()->with('ok','Запись на занятие сохранена.');
     }
 
     public function cancelSlot(Request $request, InstructorSlot $slot)
     {
+        $slot->load('instructorProgram');
         DB::table('instructor_slot_user')->where('slot_id',$slot->id)->where('user_id',$request->user()->id)->delete();
+        NmoActivityLog::create(['user_id'=>$request->user()->id,'program_id'=>$slot->instructorProgram?->program_id,'action'=>'instructor_booking_cancel','label'=>'Отменил запись к преподавателю','meta'=>['slot_id'=>$slot->id],'ip'=>$request->ip()]);
         return back()->with('ok','Запись отменена.');
     }
 
