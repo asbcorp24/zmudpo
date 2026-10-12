@@ -115,3 +115,5 @@ input,select,textarea{max-width:100%}
 .err{background:#fef3f2;border:1px solid #ffd1cc;color:#b42318;padding:12px 14px;border-radius:10px;margin-bottom:16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 .table-wrap{width:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+
+.response-box{border:1px solid #dfe6f0;background:#f9fbfe;border-radius:14px;padding:14px}.response-box .review-note{border:1px solid #f2d58d}.response-box form{margin:0}
