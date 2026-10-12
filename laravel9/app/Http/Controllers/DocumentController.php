@@ -11,8 +11,8 @@ class DocumentController extends Controller {
  }
  public function print(Request $request, EducationDocument $document){
   abort_unless($document->user_id===null || $document->user_id===$request->user()->id,403);
-  $document->load(['user','program']);
-  return view('documents.print',compact('document'));
+  $document->load(['user','program','template']);$template=$document->template;
+  return view('documents.print',compact('document','template'));
  }
  public function download(Request $request, EducationDocument $document){
   abort_unless($document->user_id===null || $document->user_id===$request->user()->id,403);

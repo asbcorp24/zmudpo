@@ -58,6 +58,8 @@
                 <a class="nav-link" href="{{route('admin.quizzes.index')}}"><i class="bi bi-patch-question"></i><span>Тесты</span></a>
                 <a class="nav-link" href="{{route('admin.review.index')}}"><i class="bi bi-clipboard-check"></i><span>Проверка</span></a>
                 <a class="nav-link" href="{{route('admin.documents.index')}}"><i class="bi bi-file-earmark-medical"></i><span>Документы</span></a>
+                <a class="nav-link" href="{{route('admin.document-templates.index')}}"><i class="bi bi-layout-text-window"></i><span>Шаблоны документов</span></a>
+                <a class="nav-link" href="{{route('admin.reports.index')}}"><i class="bi bi-printer"></i><span>Отчёты</span></a>
                 <a class="nav-link" href="{{route('admin.announcements.index')}}"><i class="bi bi-megaphone"></i><span>Объявления</span></a>
                 <a class="nav-link" href="{{route('admin.legacy.index')}}"><i class="bi bi-tools"></i><span>Все legacy-функции</span></a>
             @endif

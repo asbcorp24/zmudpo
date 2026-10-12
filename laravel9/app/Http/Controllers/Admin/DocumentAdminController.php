@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{EducationDocument,Enrollment};
+use App\Models\{CertificateTemplate,EducationDocument,Enrollment};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,7 +16,8 @@ class DocumentAdminController extends Controller
         if($r->filled('type'))$q->where('type',$r->string('type'));
         return view('admin.documents.index',[
             'items'=>$q->latest('issued_at')->paginate(40)->withQueryString(),
-            'completed'=>Enrollment::with('user','program')->where('status','completed')->latest('completed_at')->limit(300)->get()
+            'completed'=>Enrollment::with('user','program')->where('status','completed')->latest('completed_at')->limit(300)->get(),
+            'templates'=>CertificateTemplate::where('is_active',1)->orderBy('document_type')->orderBy('name')->get()
         ]);
     }
 
@@ -34,6 +35,7 @@ class DocumentAdminController extends Controller
             'hours'=>'nullable|integer|min:0',
             'qualification'=>'nullable|string|max:500',
             'registration_number'=>'nullable|string|max:100',
+            'certificate_template_id'=>'nullable|exists:certificate_templates,id',
         ]);
         $enrollment=Enrollment::with(['user','program'])->where('user_id',$d['user_id'])->where('program_id',$d['program_id'])->where('status','completed')->first();
         if(!$enrollment)return back()->withErrors(['document'=>'Документ можно выдать только после завершения программы.']);
@@ -48,14 +50,15 @@ class DocumentAdminController extends Controller
             'issued_by'=>$r->user()->id,
         ];
         unset($d['file'],$d['protocol'],$d['hours'],$d['qualification'],$d['registration_number']);
+        if(empty($d['certificate_template_id']))$d['certificate_template_id']=CertificateTemplate::where('document_type',$d['type'])->where('is_active',1)->orderByDesc('is_default')->value('id');
         EducationDocument::create($d+['file_path'=>$filePath,'issued_at'=>$d['issued_at']??now()->toDateString(),'meta'=>$meta]);
         return back()->with('ok','Документ выдан.');
     }
 
     public function print(EducationDocument $document)
     {
-        $document->load(['user','program']);
-        return view('admin.documents.print',compact('document'));
+        $document->load(['user','program','template']);$template=$document->template;
+        return view('admin.documents.print',compact('document','template'));
     }
 
     public function destroy(EducationDocument $document)
