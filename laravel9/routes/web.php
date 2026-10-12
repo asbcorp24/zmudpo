@@ -1,6 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{AuthController,DashboardController,LearningController,QuizController,PracticeController,DocumentController,ForumController,PublicSiteController,CourseRegistrationController};
+use App\Http\Controllers\{AuthController,DashboardController,LearningController,QuizController,PracticeController,DocumentController,ForumController,PublicSiteController,CourseRegistrationController,PaymentController};
 use App\Http\Controllers\Admin\{DashboardController as AdminDashboard,ProgramController as AdminPrograms,ProgramTypeController as AdminProgramTypes,UserController as AdminUsers,EnrollmentController as AdminEnrollments,SectionController as AdminSections,ReviewController as AdminReview,GroupController as AdminGroups,DocumentAdminController as AdminDocuments,AnnouncementController as AdminAnnouncements,LegacyAdminController,BulkUserController,ContentAdminController,ArchiveAdminController,PermissionController,QuizAdminController};
 use App\Http\Controllers\Curator\DashboardController as CuratorDashboard;
 use App\Http\Controllers\Curator\LegacyCabinetController as CuratorLegacy;
@@ -15,7 +15,9 @@ Route::get('/courses/{program}',[PublicSiteController::class,'program'])->name('
 
 Route::middleware('guest')->group(function(){Route::get('/login',[AuthController::class,'showLogin'])->name('login');Route::post('/login',[AuthController::class,'login'])->name('login.perform');});
 Route::post('/logout',[AuthController::class,'logout'])->middleware('auth')->name('logout');
+Route::get('/payments/robokassa/success',[PaymentController::class,'success'])->name('payments.robokassa.success');
 Route::middleware('auth')->group(function(){
+ Route::post('/payments/content/{item}',[PaymentController::class,'start'])->name('payments.content.start');
  Route::get('/cabinet',[DashboardController::class,'index'])->name('dashboard');Route::get('/learning',[LearningController::class,'index'])->name('learning.index');Route::get('/learning/{section}',[LearningController::class,'show'])->name('learning.show');
  Route::get('/quizzes',[QuizController::class,'index'])->name('quizzes.index');Route::get('/quizzes/{assignment}',[QuizController::class,'show'])->name('quizzes.show');Route::post('/quizzes/{assignment}',[QuizController::class,'submit'])->name('quizzes.submit');
  Route::get('/practice',[PracticeController::class,'index'])->name('practice.index');Route::get('/documents',[DocumentController::class,'index'])->name('documents.index');Route::get('/forum',[ForumController::class,'index'])->name('forum.index');
