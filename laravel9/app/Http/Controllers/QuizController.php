@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{QuizAssignment,QuizAttempt,QuizAttemptDetail,Enrollment};
+use App\Models\{ContentItem,ContentItemEntitlement,QuizAssignment,QuizAttempt,QuizAttemptDetail,Enrollment};
 use App\Services\{LearningAccessService,QuizAccessService};
 use Illuminate\Http\Request;
 
@@ -50,6 +50,24 @@ class QuizController extends Controller
     }
     private function allow(Request $r, QuizAssignment $a, LearningAccessService $access, QuizAccessService $rules): void
     {
-        $access->enrollment($r->user(),$a->program_id);if($a->learning_section_id){$s=$a->learningSection;if($s&&!$access->canOpenSection($r->user(),$s))abort(403,'Предыдущий раздел ещё не завершён.');}$rules->assertAvailable($a,$r->user());
+        $access->enrollment($r->user(),$a->program_id);
+        if($a->learning_section_id){$s=$a->learningSection;if($s&&!$access->canOpenSection($r->user(),$s))abort(403,'Предыдущий раздел ещё не завершён.');}
+        $linked=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$a->program_id))
+            ->whereIn('legacy_type',[3,15,18,21,22])->where('is_active',1)->get()
+            ->filter(fn($item)=>(int)data_get($item->settings,'quiz_assignment_id')===$a->id);
+        if($linked->isNotEmpty())abort_unless($r->user()->personal_data_consent_at,403,'Необходимо подтвердить согласие на обработку персональных данных.');
+        foreach($linked as $item){
+            if($item->available_from&&now()->lt($item->available_from))abort(403,'Тест ещё не открыт.');
+            if($item->available_until&&now()->gt($item->available_until))abort(403,'Срок доступа к тесту завершён.');
+            if(data_get($item->settings,'password_required')&&!$r->session()->get('content_unlocked.'.$item->id))abort(403,'Тест защищён одноразовым кодом доступа.');
+            if($item->repeat_limit){
+                $attempts=QuizAttempt::where('quiz_assignment_id',$a->id)->where('user_id',$r->user()->id)->count();
+                $passed=QuizAttempt::where('quiz_assignment_id',$a->id)->where('user_id',$r->user()->id)->where('passed',1)->exists();
+                abort_if(!$passed && $attempts >= $item->repeat_limit,403,'Лимит попыток исчерпан.');
+            }
+            $pay=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$a->program_id))->where('legacy_type',11)->where('is_active',1)->whereJsonContains('settings->unlock_item_ids',$item->id)->exists();
+            if($pay&&!ContentItemEntitlement::where('user_id',$r->user()->id)->where('content_item_id',$item->id)->exists())abort(402,'Тест доступен после оплаты.');
+        }
+        $rules->assertAvailable($a,$r->user());
     }
 }

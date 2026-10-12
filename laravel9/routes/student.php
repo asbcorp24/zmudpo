@@ -25,12 +25,21 @@ Route::middleware('auth')->group(function(){
     Route::get('/quiz-attempts/{attempt}/result',[QuizController::class,'result'])->name('quizzes.result');
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
+    Route::post('/learning/{section}/visit',[LearningController::class,'markSectionVisit'])->name('learning.visit');
+    Route::post('/learning/announcement/{announcement}/ack',[LearningController::class,'acknowledgeAnnouncement'])->name('learning.announcement.ack');
+    Route::post('/learning/personal-data/accept',[LearningController::class,'acceptPersonalData'])->name('learning.personal-data.accept');
     Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
     Route::get('/learning-content/{item}/package/{path?}',[LearningController::class,'package'])->where('path','.*')->name('learning.package');
     Route::post('/learning-content/{item}/response',[LearningController::class,'submitResponse'])->name('learning.response');
     Route::post('/learning-content/{item}/unlock',[LearningController::class,'unlock'])->name('learning.unlock');
     Route::post('/learning-content/{item}/complete-program',[LearningController::class,'completeProgram'])->name('learning.complete-program');
     Route::get('/learning-content/{item}/table',[LearningController::class,'table'])->name('learning.table');
+    Route::get('/learning-content/{item}/practice-diary',[LearningController::class,'practiceDiary'])->name('learning.practice-diary');
+    Route::post('/learning-content/{item}/practice-diary',[LearningController::class,'storePracticeDiary'])->name('learning.practice-diary.store');
+    Route::put('/learning-practice-diary/{entry}',[LearningController::class,'updatePracticeDiary'])->name('learning.practice-diary.update');
+    Route::get('/learning-content/{item}/certificate',[LearningController::class,'certificate'])->name('learning.certificate');
+    Route::get('/learning-content/{item}/media',[LearningController::class,'media'])->name('learning.media');
+    Route::get('/learning-content/{item}/extra',[LearningController::class,'downloadExtra'])->name('learning.extra');
     Route::get('/learning-content-response/{response}/download/{index?}',[LearningController::class,'downloadResponse'])->whereNumber('index')->name('learning.response.download');
     Route::post('/practice/{assignment}/submit',[PracticeController::class,'submit'])->name('practice.submit');
     Route::get('/practice-submissions/{submission}/download',[PracticeController::class,'download'])->name('practice.download');
