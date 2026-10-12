@@ -1,0 +1,7 @@
+@extends('layouts.app')
+@section('title','Организация')
+@section('content')
+<div class="page-heading"><div><h1>{{$org->organizationProfile?->short_name ?: $org->full_name}}</h1><p>Управление сотрудниками организации.</p></div><span class="badge-soft">{{$org->employees->count()}} сотрудников</span></div>
+<div class="panel mb-4"><h2>Добавить сотрудника</h2><form method="post" action="{{route('organization.employees.store')}}">@csrf<div class="grid"><div><label>Программа</label><select name="program_id" required>@foreach($programs as $e)<option value="{{$e->program_id}}">{{$e->program?->title}}</option>@endforeach</select></div><div><label>ФИО</label><input name="full_name" required></div><div><label>E-mail</label><input type="email" name="email"></div></div><button class="btn mt-2">Добавить</button></form></div>
+<div class="panel"><h2>Сотрудники</h2>@forelse($org->employees as $employee)<div class="list-row"><div><strong>{{$employee->full_name}}</strong><small>{{$employee->email ?: 'e-mail не указан'}} · {{$employee->is_active?'активен':'ожидает приглашения'}}</small></div><a class="btn btn-sm btn-outline-primary" href="{{route('admin.users.edit',$employee)}}">Карточка</a></div>@empty<p class="empty">Сотрудники ещё не добавлены.</p>@endforelse</div>
+@endsection
