@@ -32,7 +32,7 @@ class LegacyCabinetController extends Controller
         $diary=NmoPracticeDiaryEntry::with('item.section')->where('user_id',$enrollment->user_id)->whereIn('content_item_id',$itemIds)->latest('work_date')->get();
         $visits=LearningSectionVisit::with('section')->where('user_id',$enrollment->user_id)->whereIn('learning_section_id',$sections->pluck('id'))->latest('visited_at')->get();
         $acks=AnnouncementUserAcknowledgement::with('announcement')->where('user_id',$enrollment->user_id)->latest('acknowledged_at')->get();
-        $activity=NmoActivityLog::with(['program','section','item'])->where('user_id',$enrollment->user_id)->where('program_id',$enrollment->program_id)->latest()->limit(500)->get();
+        $activity=NmoActivityLog::with(['program','section','item'])->where('user_id',$enrollment->user_id)->where(fn($q)=>$q->where('program_id',$enrollment->program_id)->orWhereNull('program_id'))->latest()->limit(500)->get();
         $logins=Schema::hasTable('login_activities')?DB::table('login_activities')->where('user_id',$enrollment->user_id)->latest('logged_in_at')->limit(100)->get():collect();
         $legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::where('user_id',$enrollment->user_id)->latest('occurred_at')->get():collect();
         return view('curator.student',compact('enrollment','sections','progress','nmo','attempts','submissions','responses','tickets','diary','visits','acks','activity','logins','legacy'));
@@ -76,7 +76,7 @@ class LegacyCabinetController extends Controller
         $visits=LearningSectionVisit::with(['user','section.program'])->whereIn('user_id',$ids)->whereIn('learning_section_id',$sections->pluck('id'))->latest('visited_at')->limit(1000)->get();
         $attempts=QuizAttempt::with(['user','assignment'])->whereIn('user_id',$ids)->whereHas('assignment',fn($q)=>$q->whereIn('program_id',$pids))->latest('finished_at')->limit(1000)->get();
         $acks=AnnouncementUserAcknowledgement::with(['user','announcement'])->whereIn('user_id',$ids)->latest('acknowledged_at')->limit(1000)->get();
-        $activityQuery=NmoActivityLog::with(['user','program','section','item'])->whereIn('user_id',$ids)->whereIn('program_id',$pids);
+        $activityQuery=NmoActivityLog::with(['user','program','section','item'])->whereIn('user_id',$ids)->where(fn($q)=>$q->whereIn('program_id',$pids)->orWhereNull('program_id'));
         if($r->filled('action'))$activityQuery->where('action',$r->string('action')->toString());
         if($r->filled('date_from'))$activityQuery->whereDate('created_at','>=',$r->date('date_from'));
         if($r->filled('date_to'))$activityQuery->whereDate('created_at','<=',$r->date('date_to'));
