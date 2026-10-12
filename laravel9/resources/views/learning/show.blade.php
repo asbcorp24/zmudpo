@@ -27,7 +27,7 @@
 @elseif($item->file_path)<a class="btn btn-outline-primary" data-no-ajax href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
 @if((int)$item->legacy_type===19 && $item->file_path)<a class="btn btn-primary" href="{{route('learning.table',$item)}}">Открыть таблицу</a>@endif
 @if($item->external_url)<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="{{ $item->external_url }}">Открыть ресурс ↗</a>@endif
-@if((int)$item->legacy_type===6)<a class="btn btn-primary" href="{{route('student.surveys')}}">Перейти к анкете</a>@endif
+@if((int)$item->legacy_type===6)<a class="btn btn-primary" href="{{route('student.surveys',array_filter(['survey'=>data_get($set,'survey_id')]))}}">Перейти к анкете</a>@endif
 @if((int)$item->legacy_type===16)<a class="btn btn-primary" href="{{route('practice.index')}}">Перейти к практике</a>@endif
 @if((int)$item->legacy_type===11)<span class="badge-soft">Оплата@if(isset($set['price'])): {{number_format((float)$set['price'],2,',',' ')}} ₽@endif</span>@endif
 @if((int)$item->legacy_type===5)<form method="post" action="{{route('learning.complete-program',$item)}}" class="d-inline">@csrf<button class="btn btn-success" type="submit">Завершить обучение</button></form>@endif
