@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,ContentItemTicketAssignment,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,ContentItemTicketAssignment,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,NmoPracticeDiaryEntry,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
 use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB,Storage};
@@ -116,6 +116,39 @@ class LearningController extends Controller {
   array_splice($codes,$index,1);$settings['access_codes']=$codes;$item->settings=$settings;$item->save();
   $request->session()->put('content_unlocked.'.$item->id,true);
   return back()->with('ok','Материал разблокирован.');
+ }
+
+
+ public function practiceDiary(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
+  abort_unless((int)$item->legacy_type===16,404);
+  $entries=NmoPracticeDiaryEntry::where('content_item_id',$item->id)->where('user_id',$request->user()->id)->orderBy('work_date')->orderBy('id')->get();
+  return view('learning.practice-diary',compact('item','entries'));
+ }
+
+ public function storePracticeDiary(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
+  abort_unless((int)$item->legacy_type===16,404);
+  $d=$request->validate(['work_date'=>'required|date','work_done'=>'required|string|max:50000','supervisor'=>'nullable|string|max:255']);
+  NmoPracticeDiaryEntry::create($d+['content_item_id'=>$item->id,'user_id'=>$request->user()->id]);
+  return back()->with('ok','Запись дневника добавлена.');
+ }
+
+ public function updatePracticeDiary(Request $request,NmoPracticeDiaryEntry $entry){
+  abort_unless($entry->user_id===$request->user()->id,403);
+  $d=$request->validate(['work_date'=>'required|date','work_done'=>'required|string|max:50000','supervisor'=>'nullable|string|max:255']);
+  $entry->update($d);
+  return back()->with('ok','Запись дневника сохранена.');
+ }
+
+ public function certificate(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
+  abort_unless((int)$item->legacy_type===15,404);
+  $assignmentId=(int)data_get($item->settings,'quiz_assignment_id');
+  abort_unless($assignmentId,422,'Для сертификата не назначен тест.');
+  $attempt=QuizAttempt::where('quiz_assignment_id',$assignmentId)->where('user_id',$request->user()->id)->where('passed',1)->latest('finished_at')->first();
+  abort_unless($attempt,403,'Сертификат доступен после успешного прохождения теста.');
+  return view('learning.certificate',compact('item','attempt'));
  }
 
  public function table(Request $request,ContentItem $item,LearningAccessService $access){
