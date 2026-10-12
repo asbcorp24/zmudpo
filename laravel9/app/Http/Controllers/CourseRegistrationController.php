@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{Enrollment,Program,User};
+use App\Models\{Enrollment,OrganizationProfile,Program,User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB,Hash,Mail,URL};
 use Illuminate\Support\Str;
@@ -22,6 +22,11 @@ class CourseRegistrationController extends Controller
             'email' => ['required','email','max:255','unique:users,email'],
             'phone' => ['nullable','string','max:50'],
             'is_legal_entity' => ['nullable','boolean'],
+            'inn' => ['nullable','string','max:20'],
+            'kpp' => ['nullable','string','max:20'],
+            'ogrn' => ['nullable','string','max:30'],
+            'legal_address' => ['nullable','string','max:500'],
+            'contact_person' => ['nullable','string','max:255'],
             'consent' => ['accepted'],
         ], [
             'email.unique' => 'Пользователь с таким e-mail уже зарегистрирован. Войдите в систему или обратитесь к администратору.',
@@ -39,6 +44,7 @@ class CourseRegistrationController extends Controller
                 'is_active' => false,
                 'is_legal_entity' => $request->boolean('is_legal_entity'),
             ]);
+            if($request->boolean('is_legal_entity')) OrganizationProfile::create(['user_id'=>$user->id,'inn'=>$data['inn']??null,'kpp'=>$data['kpp']??null,'ogrn'=>$data['ogrn']??null,'legal_address'=>$data['legal_address']??null,'contact_person'=>$data['contact_person']??null]);
             Enrollment::create([
                 'user_id' => $user->id,
                 'program_id' => $program->id,
