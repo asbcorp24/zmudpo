@@ -32,9 +32,10 @@ class LegacyCabinetController extends Controller
         $diary=NmoPracticeDiaryEntry::with('item.section')->where('user_id',$enrollment->user_id)->whereIn('content_item_id',$itemIds)->latest('work_date')->get();
         $visits=LearningSectionVisit::with('section')->where('user_id',$enrollment->user_id)->whereIn('learning_section_id',$sections->pluck('id'))->latest('visited_at')->get();
         $acks=AnnouncementUserAcknowledgement::with('announcement')->where('user_id',$enrollment->user_id)->latest('acknowledged_at')->get();
+        $activity=NmoActivityLog::with(['program','section','item'])->where('user_id',$enrollment->user_id)->where('program_id',$enrollment->program_id)->latest()->limit(500)->get();
         $logins=Schema::hasTable('login_activities')?DB::table('login_activities')->where('user_id',$enrollment->user_id)->latest('logged_in_at')->limit(100)->get():collect();
         $legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::where('user_id',$enrollment->user_id)->latest('occurred_at')->get():collect();
-        return view('curator.student',compact('enrollment','sections','progress','nmo','attempts','submissions','responses','tickets','diary','visits','acks','logins','legacy'));
+        return view('curator.student',compact('enrollment','sections','progress','nmo','attempts','submissions','responses','tickets','diary','visits','acks','activity','logins','legacy'));
     }
 
     public function attendance(Request $r){
