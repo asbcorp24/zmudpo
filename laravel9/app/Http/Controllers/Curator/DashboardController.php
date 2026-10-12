@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers\Curator;
 use App\Http\Controllers\Controller;
-use App\Models\{Enrollment,Submission,User};
+use App\Models\{ContentItemResponse,Enrollment,Submission,User};
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -17,10 +17,11 @@ class DashboardController extends Controller
         $studentIds=(clone $enrollmentQuery)->pluck('user_id');
         $programIds=(clone $enrollmentQuery)->pluck('program_id');
         $submissionQuery=Submission::whereIn('user_id',$studentIds)->whereHas('practiceAssignment',fn($q)=>$q->whereIn('program_id',$programIds));
+        $contentQuery=ContentItemResponse::whereIn('user_id',$studentIds)->whereHas('item.section',fn($q)=>$q->whereIn('program_id',$programIds));
         return view('curator.dashboard',[
             'students'=>User::whereIn('id',$studentIds)->where('role','student')->where('is_active',true)->count(),
             'activeEnrollments'=>(clone $enrollmentQuery)->where('status','active')->count(),
-            'pendingSubmissions'=>(clone $submissionQuery)->where('status','submitted')->count(),
+            'pendingSubmissions'=>(clone $submissionQuery)->where('status','submitted')->count()+(clone $contentQuery)->where('status','submitted')->count(),
             'recentSubmissions'=>(clone $submissionQuery)->with('user')->latest('submitted_at')->limit(10)->get(),
         ]);
     }
