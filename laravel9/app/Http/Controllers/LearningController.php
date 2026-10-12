@@ -51,6 +51,16 @@ class LearningController extends Controller {
  }
 
 
+
+ public function table(Request $request,ContentItem $item,LearningAccessService $access){
+  $item->load('section.program');$this->authorizeItem($request,$item,$access);
+  abort_unless((int)$item->legacy_type===19 && $item->file_path && Storage::exists($item->file_path),404);
+  $raw=Storage::get($item->file_path);$rows=[];
+  foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,';');}
+  if($rows && count($rows[0])===1){$rows=[];foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,',');}}
+  return view('learning.table',compact('item','rows'));
+ }
+
  public function completeProgram(Request $request,ContentItem $item,LearningAccessService $access,CompletionService $completion){
   $item->load('section');$this->authorizeItem($request,$item,$access);
   abort_unless((int)$item->legacy_type===5,422,'Этот элемент не завершает обучение.');
