@@ -50,6 +50,7 @@
                 <a class="nav-link nav-primary" href="{{route('admin.dashboard')}}"><i class="bi bi-sliders"></i><span>Панель управления</span></a>
                 <a class="nav-link nav-primary" href="{{route('admin.nmo.index')}}"><i class="bi bi-diagram-3"></i><span>Конструктор НМО/ДПО</span></a>
                 <a class="nav-link" href="{{route('admin.users.index')}}"><i class="bi bi-person-gear"></i><span>Пользователи</span></a>
+                <a class="nav-link" href="{{route('admin.organizations.index')}}"><i class="bi bi-building"></i><span>Организации</span></a>
                 <a class="nav-link" href="{{route('admin.programs.index')}}"><i class="bi bi-journals"></i><span>Программы</span></a>
                 <a class="nav-link" href="{{route('admin.groups.index')}}"><i class="bi bi-people-fill"></i><span>Группы</span></a>
                 <a class="nav-link" href="{{route('admin.enrollments.index')}}"><i class="bi bi-person-check"></i><span>Назначения</span></a>
