@@ -19,6 +19,7 @@
         </a>
 
         <nav class="app-nav">
+            @if(auth()->user()->role==='student')
             <div class="nav-caption">Обучение</div>
             <a class="nav-link" href="{{route('dashboard')}}"><i class="bi bi-grid"></i><span>Мой кабинет</span></a>
             <a class="nav-link" href="{{route('learning.index')}}"><i class="bi bi-mortarboard"></i><span>Обучение</span></a>
@@ -33,8 +34,9 @@
             <a class="nav-link" href="{{route('student.resources')}}"><i class="bi bi-collection"></i><span>Библиотека</span></a>
             <a class="nav-link" href="{{route('documents.index')}}"><i class="bi bi-file-earmark-text"></i><span>Документы</span></a>
             <a class="nav-link" href="{{route('history.index')}}"><i class="bi bi-clock-history"></i><span>История</span></a>
-            <a class="nav-link" href="{{route('profile.show')}}"><i class="bi bi-person"></i><span>Профиль</span></a>
             @if(auth()->user()->is_legal_entity)<a class="nav-link" href="{{route('organization.index')}}">Моя организация</a>@endif
+            @endif
+            <a class="nav-link" href="{{route('profile.show')}}"><i class="bi bi-person"></i><span>Профиль</span></a>
 
             @if(auth()->user()->role==='curator')
                 <div class="nav-caption">Куратор</div>
