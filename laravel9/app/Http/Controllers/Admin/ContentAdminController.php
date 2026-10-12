@@ -86,11 +86,12 @@ class ContentAdminController extends Controller
 
     public function update(Request $request, ContentItem $item)
     {
-        $data=$request->validate(['title'=>'required|string|max:255','body'=>'nullable|string','position'=>'nullable|integer|min:0','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from','repeat_limit'=>'nullable|integer|min:1','external_url'=>'nullable|url|max:1000','file'=>'nullable|file|max:102400','extra_file'=>'nullable|file|max:102400','certificate_name'=>'nullable|string|max:255','certificate_text'=>'nullable|string','certificate_hours'=>'nullable|integer|min:0','list_options'=>'nullable|string','price'=>'nullable|numeric|min:0','survey_id'=>'nullable|integer','practice_cycle_id'=>'nullable|integer','random_min'=>'nullable|integer','random_max'=>'nullable|integer','access_codes'=>'nullable|string']);
+        $data=$request->validate(['title'=>'required|string|max:255','body'=>'nullable|string','position'=>'nullable|integer|min:0','available_from'=>'nullable|date','available_until'=>'nullable|date|after_or_equal:available_from','repeat_limit'=>'nullable|integer|min:1','external_url'=>'nullable|url|max:1000','file'=>'nullable|file|max:102400','extra_file'=>'nullable|file|max:102400','certificate_name'=>'nullable|string|max:255','certificate_text'=>'nullable|string','certificate_hours'=>'nullable|integer|min:0','list_options'=>'nullable|string','price'=>'nullable|numeric|min:0','survey_id'=>'nullable|integer','practice_cycle_id'=>'nullable|integer','random_min'=>'nullable|integer','random_max'=>'nullable|integer','access_codes'=>'nullable|string','unlock_item_ids'=>'nullable|array','unlock_item_ids.*'=>'exists:content_items,id']);
         $settings=$item->settings ?: [];
         foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max'] as $key) if($request->has($key)) $settings[$key]=$data[$key] ?? null;
         if($request->has('list_options'))$settings['list_options']=$this->lines($data['list_options'] ?? '');
         if($request->has('access_codes'))$settings['access_codes']=$this->lines($data['access_codes'] ?? '');
+        if($request->has('unlock_item_ids'))$settings['unlock_item_ids']=array_values(array_unique(array_map('intval',$data['unlock_item_ids']??[])));
         $settings['password_required']=$request->boolean('password_required');
         if($request->hasFile('file')){
             $oldRoot=$settings['package_root'] ?? null;$this->deleteStoredPathIfUnused($item,$item->file_path,$oldRoot);
@@ -98,7 +99,7 @@ class ContentAdminController extends Controller
             if($packageRoot)$settings['package_root']=$packageRoot;else unset($settings['package_root']);
         }
         if($request->hasFile('extra_file')){if($item->extra_file_path&&!ContentItem::where('id','<>',$item->id)->where('extra_file_path',$item->extra_file_path)->exists())Storage::delete($item->extra_file_path);$data['extra_file_path']=$request->file('extra_file')->store('nmo/extra');}
-        unset($data['file'],$data['extra_file'],$data['certificate_name'],$data['certificate_text'],$data['certificate_hours'],$data['list_options'],$data['price'],$data['survey_id'],$data['practice_cycle_id'],$data['random_min'],$data['random_max'],$data['access_codes']);
+        unset($data['file'],$data['extra_file'],$data['certificate_name'],$data['certificate_text'],$data['certificate_hours'],$data['list_options'],$data['price'],$data['survey_id'],$data['practice_cycle_id'],$data['random_min'],$data['random_max'],$data['access_codes'],$data['unlock_item_ids']);
         $item->update($data+['settings'=>$settings,'is_active'=>$request->boolean('is_active'),'is_required'=>$request->boolean('is_required'),'allow_duplicate'=>$request->boolean('allow_duplicate'),'flag'=>$request->boolean('flag')]);
         return $this->ok($request,'Элемент обновлён',['id'=>$item->id]);
     }
@@ -157,6 +158,7 @@ class ContentAdminController extends Controller
         if($request->hasFile('handler_file'))$settings['legacy_handler_path']=$request->file('handler_file')->store('nmo/handlers');
         if($packageRoot)$settings['package_root']=$packageRoot;if(!empty($data['list_options']))$settings['list_options']=$this->lines($data['list_options']);
         if(!empty($data['access_codes']))$settings['access_codes']=$this->lines($data['access_codes']);
+        if(!empty($data['unlock_item_ids']))$settings['unlock_item_ids']=array_values(array_unique(array_map('intval',$data['unlock_item_ids'])));
         $settings['password_required']=$request->boolean('password_required');
         foreach(['certificate_name','certificate_text','certificate_hours','price','survey_id','practice_cycle_id','random_min','random_max','source_value'] as $key)if(array_key_exists($key,$data)&&$data[$key]!==null&&$data[$key]!=='')$settings[$key]=$data[$key];
         if($legacy===18 && isset($settings['legacy_handler_path']))$settings['handler_execution']='disabled_for_security';
@@ -182,7 +184,7 @@ class ContentAdminController extends Controller
 
     private function workspaceData(?Program $program): array
     {
-        $sections=$program?LearningSection::with(['contentItems','instructors'])->where('program_id',$program->id)->orderBy('position')->get():collect();return [$sections,Instructor::where('is_active',true)->orderBy('full_name')->get(),Survey::where('is_active',true)->orderBy('title')->get(),PracticeCycle::where('is_active',true)->orderBy('title')->get(),LearningSection::with('program')->orderBy('program_id')->orderBy('position')->get()];
+        $sections=$program?LearningSection::with(['contentItems','instructors'])->where('program_id',$program->id)->orderBy('position')->get():collect();return [$sections,Instructor::where('is_active',true)->orderBy('full_name')->get(),Survey::where('is_active',true)->orderBy('title')->get(),PracticeCycle::where('is_active',true)->orderBy('title')->get(),LearningSection::with(['program','contentItems'])->orderBy('program_id')->orderBy('position')->get()];
     }
 
     private function deleteItemFiles(ContentItem $item): void
