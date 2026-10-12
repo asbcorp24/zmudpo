@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Curator;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Announcement,AnnouncementUserAcknowledgement,AttendanceRecord,ContentItem,ContentItemResponse,ContentItemTicketAssignment,Enrollment,Group,LearningSection,LearningSectionProgress,LearningSectionVisit,LegacyCuratorRecord,NmoPracticeDiaryEntry,QuizAttempt,SectionProgress,Submission,FinalWork,Survey,SurveyResponse};
+use App\Models\{Announcement,AnnouncementUserAcknowledgement,AttendanceRecord,ContentItem,ContentItemResponse,ContentItemTicketAssignment,Enrollment,Group,LearningSection,LearningSectionProgress,LearningSectionVisit,LegacyCuratorRecord,NmoActivityLog,NmoPracticeDiaryEntry,QuizAttempt,SectionProgress,Submission,FinalWork,Survey,SurveyResponse};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -61,7 +61,11 @@ class LegacyCabinetController extends Controller
     public function files(Request $r){$ids=$this->studentIds($r);$pids=$this->programIds($r);$submissions=Submission::with(['user','practiceAssignment'])->whereIn('user_id',$ids)->whereNotNull('file_path')->whereHas('practiceAssignment',fn($q)=>$q->whereIn('program_id',$pids))->latest('submitted_at')->get();$finals=FinalWork::with(['user','enrollment.program'])->whereIn('user_id',$ids)->whereNotNull('file_path')->whereHas('enrollment',fn($q)=>$q->whereIn('program_id',$pids))->latest('submitted_at')->get();$legacy=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::with('user')->where('type','user_file')->whereIn('user_id',$ids)->latest('occurred_at')->get():collect();return view('curator.files',compact('submissions','finals','legacy'));}
 
     public function content(Request $r){
-        $enrollments=$this->enrollments($r)->get();
+        $eq=$this->enrollments($r);
+        if($r->filled('program_id'))$eq->where('program_id',$r->integer('program_id'));
+        if($r->filled('group_id'))$eq->where('group_id',$r->integer('group_id'));
+        if($r->filled('user_id'))$eq->where('user_id',$r->integer('user_id'));
+        $enrollments=$eq->get();
         $ids=$enrollments->pluck('user_id');$pids=$enrollments->pluck('program_id')->unique();
         $sections=LearningSection::with(['program','contentItems'])->whereIn('program_id',$pids)->orderBy('program_id')->orderBy('position')->get();
         $items=$sections->flatMap->contentItems;
@@ -71,7 +75,17 @@ class LegacyCabinetController extends Controller
         $visits=LearningSectionVisit::with(['user','section.program'])->whereIn('user_id',$ids)->whereIn('learning_section_id',$sections->pluck('id'))->latest('visited_at')->limit(1000)->get();
         $attempts=QuizAttempt::with(['user','assignment'])->whereIn('user_id',$ids)->whereHas('assignment',fn($q)=>$q->whereIn('program_id',$pids))->latest('finished_at')->limit(1000)->get();
         $acks=AnnouncementUserAcknowledgement::with(['user','announcement'])->whereIn('user_id',$ids)->latest('acknowledged_at')->limit(1000)->get();
-        return view('curator.content',compact('sections','enrollments','responses','tickets','diary','visits','attempts','acks'));
+        $activityQuery=NmoActivityLog::with(['user','program','section','item'])->whereIn('user_id',$ids)->whereIn('program_id',$pids);
+        if($r->filled('action'))$activityQuery->where('action',$r->string('action')->toString());
+        if($r->filled('date_from'))$activityQuery->whereDate('created_at','>=',$r->date('date_from'));
+        if($r->filled('date_to'))$activityQuery->whereDate('created_at','<=',$r->date('date_to'));
+        $activity=$activityQuery->latest()->paginate(100)->withQueryString();
+        $actions=NmoActivityLog::whereIn('user_id',$ids)->select('action','label')->distinct()->orderBy('label')->get();
+        return view('curator.content',compact('sections','enrollments','responses','tickets','diary','visits','attempts','acks','activity','actions')+[
+            'programs'=>$this->enrollments($r)->get()->pluck('program','program_id')->filter(),
+            'groups'=>Group::orderBy('name')->get(),
+            'students'=>$this->enrollments($r)->get()->pluck('user','user_id')->filter(),
+        ]);
     }
 
     public function documents(Request $r){$ids=$this->studentIds($r);$items=Schema::hasTable('legacy_curator_records')?LegacyCuratorRecord::with('user')->where('type','workbook')->whereIn('user_id',$ids)->latest()->paginate(80):null;return view('curator.documents',compact('items'));}
