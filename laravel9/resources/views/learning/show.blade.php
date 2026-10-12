@@ -56,9 +56,17 @@
 @if(!empty($set['list_options']))<div class="mt-2"><strong>Варианты:</strong><ol>@foreach($set['list_options'] as $option)<li>{{$option}}</li>@endforeach</ol></div>@endif
 @if(in_array((int)$item->legacy_type,[15,22],true) && (!empty($set['certificate_name'])||!empty($set['certificate_hours'])))<div class="alert alert-info mt-2"><strong>{{$set['certificate_name']??'Сертификат'}}</strong>@if(!empty($set['certificate_hours'])) · {{$set['certificate_hours']}} ч.@endif @if(!empty($set['certificate_text']))<div>{{$set['certificate_text']}}</div>@endif</div>@endif
 <div class="d-flex gap-2 flex-wrap mt-2">
-@if(in_array((int)$item->legacy_type,[3,15,18,21,22],true) && data_get($set,'quiz_assignment_id'))<a class="btn btn-primary" href="{{route('quizzes.show',data_get($set,'quiz_assignment_id'))}}">Пройти тест</a>@endif
+@if(in_array((int)$item->legacy_type,[3,15,18,21,22],true) && data_get($set,'quiz_assignment_id'))
+@php($itemAttempts=$quizAttempts->get((int)data_get($set,'quiz_assignment_id'),collect()))
+@php($lastItemAttempt=$itemAttempts->first())
+<a class="btn btn-primary" href="{{route('quizzes.show',data_get($set,'quiz_assignment_id'))}}">{{$lastItemAttempt?'Пройти ещё раз':'Пройти тест'}}</a>
+@if($lastItemAttempt)<span class="badge-soft">{{$lastItemAttempt->passed?'Тест пройден':'Тест не пройден'}} · {{number_format((float)$lastItemAttempt->percent,1)}}% · попыток {{$itemAttempts->count()}}@if($item->repeat_limit) / {{$item->repeat_limit}}@endif</span>@endif
+@endif
 @if((int)$item->legacy_type===15 && data_get($set,'quiz_assignment_id') && optional($quizAttempts->get((int)data_get($set,'quiz_assignment_id')))->contains('passed',true))
 <a class="btn btn-success" target="_blank" data-no-ajax href="{{route('learning.certificate',$item)}}">Скачать сертификат</a>
+@endif
+@if((int)$item->legacy_type===21 && $item->extra_file_path && data_get($set,'quiz_assignment_id') && optional($quizAttempts->get((int)data_get($set,'quiz_assignment_id')))->contains('passed',true))
+<a class="btn btn-outline-success" data-no-ajax href="{{route('learning.extra',$item)}}">Просмотреть ответы</a>
 @endif
 @if($packageRoot && $packageEntry)<a class="btn btn-primary" target="_blank" rel="noopener" href="{{ route('learning.package',['item'=>$item,'path'=>$packageEntry]) }}">Открыть интерактивный материал ↗</a>
 @elseif($item->file_path && (int)$item->legacy_type!==2)<a class="btn btn-outline-primary" data-no-ajax href="{{ route('learning.download',$item) }}">Скачать материал</a>@endif
