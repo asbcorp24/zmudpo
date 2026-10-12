@@ -25,6 +25,7 @@ Route::middleware('auth')->group(function(){
     Route::get('/quiz-attempts/{attempt}/result',[QuizController::class,'result'])->name('quizzes.result');
 
     Route::post('/learning/{section}/complete',[LearningController::class,'complete'])->name('learning.complete');
+    Route::post('/learning/{section}/visit',[LearningController::class,'markSectionVisit'])->name('learning.visit');
     Route::post('/learning/announcement/{announcement}/ack',[LearningController::class,'acknowledgeAnnouncement'])->name('learning.announcement.ack');
     Route::post('/learning/personal-data/accept',[LearningController::class,'acceptPersonalData'])->name('learning.personal-data.accept');
     Route::get('/learning-content/{item}/download',[LearningController::class,'download'])->name('learning.download');
