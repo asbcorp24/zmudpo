@@ -1,9 +1,9 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{ContentItem,ContentItemEntitlement,ContentItemResponse,Enrollment,LearningSection,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
 use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\{DB,Storage};
 class LearningController extends Controller {
  public function index(Request $request,LearningAccessService $access){
   $programIds=$request->user()->enrollments()->where('status','active')->pluck('program_id');
@@ -29,8 +29,40 @@ class LearningController extends Controller {
   $paymentItems=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$section->program_id))->where('legacy_type',11)->where('is_active',true)->get();
   $paymentTargets=collect();foreach($paymentItems as $pay){foreach((array)data_get($pay->settings,'unlock_item_ids',[]) as $targetId)$paymentTargets->put((int)$targetId,$pay);}
   $entitledItemIds=ContentItemEntitlement::where('user_id',$request->user()->id)->whereIn('content_item_id',$paymentTargets->keys())->pluck('content_item_id');
-  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds'));
+
+  LearningSectionVisit::create(['learning_section_id'=>$section->id,'user_id'=>$request->user()->id,'visited_at'=>now()]);
+  $enrollment=Enrollment::with('group')->where('user_id',$request->user()->id)->where('program_id',$section->program_id)->where('status','active')->first();
+  $announcements=Announcement::where('is_active',true)
+   ->where(fn($q)=>$q->whereNull('published_at')->orWhere('published_at','<=',now()))
+   ->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>=',now()))
+   ->where(fn($q)=>$q->whereNull('program_id')->orWhere('program_id',$section->program_id))
+   ->where(fn($q)=>$q->whereNull('group_id')->orWhere('group_id',$enrollment?->group_id))
+   ->latest('published_at')->get();
+  $acknowledged=AnnouncementUserAcknowledgement::where('user_id',$request->user()->id)->whereIn('announcement_id',$announcements->pluck('id'))->pluck('announcement_id');
+  $instructorAssignments=InstructorProgram::with(['instructor','slots'=>fn($q)=>$q->whereDate('date','>=',now()->toDateString())->orderBy('date')->orderBy('time')])
+   ->where('program_id',$section->program_id)->get();
+  $slotIds=$instructorAssignments->flatMap(fn($a)=>$a->slots->pluck('id'));
+  $bookedSlotIds=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->where('user_id',$request->user()->id)->whereIn('slot_id',$slotIds)->pluck('slot_id');
+  $slotCounts=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) cnt')->whereIn('slot_id',$slotIds)->groupBy('slot_id')->pluck('cnt','slot_id');
+
+  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds','announcements','acknowledged','instructorAssignments','bookedSlotIds','slotCounts','enrollment'));
  }
+
+ public function acknowledgeAnnouncement(Request $request,Announcement $announcement){
+  $programIds=$request->user()->enrollments()->whereIn('status',['active','completed'])->pluck('program_id');
+  abort_unless(!$announcement->program_id || $programIds->contains($announcement->program_id),403);
+  AnnouncementUserAcknowledgement::updateOrCreate(
+   ['announcement_id'=>$announcement->id,'user_id'=>$request->user()->id],
+   ['acknowledged_at'=>now()]
+  );
+  return back()->with('ok','Объявление отмечено как прочитанное.');
+ }
+
+ public function acceptPersonalData(Request $request){
+  if(!$request->user()->personal_data_consent_at)$request->user()->update(['personal_data_consent_at'=>now()]);
+  return back()->with('ok','Согласие сохранено.');
+ }
+
  public function complete(Request $request,LearningSection $section,LearningAccessService $access){
   abort_unless($access->canOpenSection($request->user(),$section),403);
   SectionProgress::updateOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>100,'completed_at'=>now()]);
