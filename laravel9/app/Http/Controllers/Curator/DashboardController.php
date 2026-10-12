@@ -23,8 +23,8 @@ class DashboardController extends Controller
             'activeEnrollments'=>(clone $enrollmentQuery)->where('status','active')->count(),
             'pendingSubmissions'=>(clone $submissionQuery)->where('status','submitted')->count()+(clone $contentQuery)->where('status','submitted')->count(),
             'recentSubmissions'=>(clone $submissionQuery)->with('user')->latest('submitted_at')->limit(10)->get(),
-            'nmoActions'=>NmoActivityLog::whereIn('user_id',$studentIds)->whereIn('program_id',$programIds)->count(),
-            'recentNmoActions'=>NmoActivityLog::with(['user','section','item'])->whereIn('user_id',$studentIds)->whereIn('program_id',$programIds)->latest()->limit(12)->get(),
+            'nmoActions'=>NmoActivityLog::whereIn('user_id',$studentIds)->where(fn($q)=>$q->whereIn('program_id',$programIds)->orWhereNull('program_id'))->count(),
+            'recentNmoActions'=>NmoActivityLog::with(['user','section','item'])->whereIn('user_id',$studentIds)->where(fn($q)=>$q->whereIn('program_id',$programIds)->orWhereNull('program_id'))->latest()->limit(12)->get(),
         ]);
     }
 }
