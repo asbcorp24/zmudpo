@@ -123,7 +123,13 @@ class LearningController extends Controller {
  }
 
  public function downloadResponse(Request $request,ContentItemResponse $response,int $index=-1){
-  $allowed=$response->user_id===$request->user()->id || in_array($request->user()->role,['curator','admin'],true);abort_unless($allowed,403);
+  $allowed=$response->user_id===$request->user()->id || $request->user()->isAdmin();
+  if(!$allowed && $request->user()->isCurator()){
+   $response->loadMissing('item.section');
+   $programId=$response->item?->section?->program_id;
+   $allowed=$programId && Enrollment::where('user_id',$response->user_id)->where('program_id',$programId)->where('curator_id',$request->user()->id)->exists();
+  }
+  abort_unless($allowed,403);
   $path=$index>=0?($response->files[$index]??null):$response->file_path;abort_unless($path&&Storage::exists($path),404);
   return Storage::download($path);
  }
