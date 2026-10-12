@@ -47,9 +47,10 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::dropIfExists('attendance_records');
-        Schema::table('education_documents', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('certificate_template_id');
-        });
-        if (Schema::hasColumn('education_documents','certificate_template_id')) Schema::table('education_documents', function (Blueprint $table) {$table->dropConstrainedForeignId('certificate_template_id');});
+        if (Schema::hasColumn('education_documents','certificate_template_id')) {
+            Schema::table('education_documents', function (Blueprint $table) {
+                $table->dropConstrainedForeignId('certificate_template_id');
+            });
+        }
     }
 };
