@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,ContentItemTicketAssignment,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,NmoPracticeDiaryEntry,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
+use App\Models\{Announcement,AnnouncementUserAcknowledgement,ContentItem,ContentItemEntitlement,ContentItemResponse,ContentItemTicketAssignment,Enrollment,InstructorProgram,LearningSection,LearningSectionVisit,NmoActivityLog,NmoPracticeDiaryEntry,SectionProgress,QuizAssignment,PracticeAssignment,QuizAttempt,Submission};
 use App\Services\{CompletionService,LearningAccessService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB,Storage};
@@ -47,6 +47,7 @@ class LearningController extends Controller {
   $slotCounts=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) cnt')->whereIn('slot_id',$slotIds)->groupBy('slot_id')->pluck('cnt','slot_id');
   $sectionVisits=LearningSectionVisit::where('learning_section_id',$section->id)->where('user_id',$request->user()->id)->latest('visited_at')->limit(10)->get();
 
+  $this->logActivity($request,'section_open','Открыт раздел',$section,null);
   return view('learning.show',compact('section','progress','quizzes','linkedQuizIds','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds','announcements','acknowledged','instructorAssignments','bookedSlotIds','slotCounts','enrollment','sectionVisits'));
  }
 
@@ -54,6 +55,7 @@ class LearningController extends Controller {
  public function markSectionVisit(Request $request,LearningSection $section,LearningAccessService $access){
   abort_unless($access->canOpenSection($request->user(),$section),403);
   LearningSectionVisit::create(['learning_section_id'=>$section->id,'user_id'=>$request->user()->id,'visited_at'=>now()]);
+  $this->logActivity($request,'attendance_mark','Отметил присутствие',$section,null);
   return back()->with('ok','Присутствие отмечено: '.now()->format('d.m.Y H:i:s'));
  }
 
@@ -64,11 +66,13 @@ class LearningController extends Controller {
    ['announcement_id'=>$announcement->id,'user_id'=>$request->user()->id],
    ['acknowledged_at'=>now()]
   );
+  $this->logActivity($request,'announcement_ack','Прочитал объявление',null,null,['announcement_id'=>$announcement->id,'title'=>$announcement->title]);
   return back()->with('ok','Объявление отмечено как прочитанное.');
  }
 
  public function acceptPersonalData(Request $request){
   if(!$request->user()->personal_data_consent_at)$request->user()->update(['personal_data_consent_at'=>now()]);
+  $this->logActivity($request,'personal_data_consent','Подтвердил согласие на ПД');
   return back()->with('ok','Согласие сохранено.');
  }
 
@@ -93,12 +97,14 @@ class LearningController extends Controller {
    abort_unless($accepted===$practiceIds->count(),422,'Не приняты все практические задания раздела.');
   }
   SectionProgress::updateOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>100,'completed_at'=>now()]);
+  $this->logActivity($request,'section_complete','Завершил раздел',$section,null);
   return back()->with('success','Раздел отмечен как пройденный.');
  }
  public function download(Request $request,ContentItem $item,LearningAccessService $access){
   $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless($item->file_path && Storage::exists($item->file_path),404);
   $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
+  $this->logActivity($request,'material_download','Открыл/скачал материал',$item->section,$item);
   if(in_array($ext,['html','htm'],true))return response(Storage::get($item->file_path),200,['Content-Type'=>'text/html; charset=UTF-8','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
   return Storage::download($item->file_path);
  }
@@ -108,6 +114,7 @@ class LearningController extends Controller {
   $relative=$path?:ltrim(str_replace($root.'/','',(string)$item->file_path),'/');
   $relative=str_replace('\\','/',$relative);abort_if(str_starts_with($relative,'/')||preg_match('/(^|\/)\.\.(\/|$)/',$relative),400);
   $full=rtrim($root,'/').'/'.ltrim($relative,'/');abort_unless(Storage::exists($full),404);
+  $this->logActivity($request,'package_open','Открыл интерактивный материал',$item->section,$item,['path'=>$relative]);
   $ext=strtolower(pathinfo($full,PATHINFO_EXTENSION));$mime=match($ext){'html','htm'=>'text/html; charset=UTF-8','js'=>'application/javascript','css'=>'text/css','json'=>'application/json','svg'=>'image/svg+xml','png'=>'image/png','jpg','jpeg'=>'image/jpeg','gif'=>'image/gif','webp'=>'image/webp','mp3'=>'audio/mpeg','mp4'=>'video/mp4','pdf'=>'application/pdf',default=>'application/octet-stream'};
   return response(Storage::get($full),200,['Content-Type'=>$mime,'X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; media-src 'self' data: blob:;"]);
  }
@@ -125,6 +132,7 @@ class LearningController extends Controller {
   if($index===false)return back()->withErrors(['code'=>'Код доступа неверный или уже использован.']);
   array_splice($codes,$index,1);$settings['access_codes']=$codes;$item->settings=$settings;$item->save();
   $request->session()->put('content_unlocked.'.$item->id,true);
+  $this->logActivity($request,'access_code_used','Использовал код доступа',$item->section,$item);
   return back()->with('ok','Материал разблокирован.');
  }
 
@@ -140,6 +148,7 @@ class LearningController extends Controller {
    $passed=QuizAttempt::where('quiz_assignment_id',$assignmentId)->where('user_id',$request->user()->id)->where('passed',1)->exists();
    abort_unless($passed,403,'Ответы доступны после успешного прохождения теста.');
   }
+  $this->logActivity($request,'extra_file_download','Скачал дополнительный файл',$item->section,$item);
   return Storage::download($item->extra_file_path);
  }
 
@@ -147,6 +156,7 @@ class LearningController extends Controller {
   $item->load('section');$this->authorizeItem($request,$item,$access);$this->assertPaid($request,$item);$this->assertUnlocked($request,$item);
   abort_unless((int)$item->legacy_type===2 && $item->file_path && Storage::exists($item->file_path),404);
   $ext=strtolower(pathinfo($item->file_path,PATHINFO_EXTENSION));
+  $this->logActivity($request,'video_open','Открыл видео',$item->section,$item);
   $mime=match($ext){'mp4'=>'video/mp4','webm'=>'video/webm','ogg','ogv'=>'video/ogg','mov'=>'video/quicktime',default=>'application/octet-stream'};
   return response(Storage::get($item->file_path),200,['Content-Type'=>$mime,'Content-Disposition'=>'inline']);
  }
@@ -163,6 +173,7 @@ class LearningController extends Controller {
   abort_unless((int)$item->legacy_type===16,404);
   $d=$request->validate(['work_date'=>'required|date','work_done'=>'required|string|max:50000','supervisor'=>'nullable|string|max:255']);
   NmoPracticeDiaryEntry::create($d+['content_item_id'=>$item->id,'user_id'=>$request->user()->id]);
+  $this->logActivity($request,'practice_diary_add','Добавил запись в дневник',$item->section,$item,['work_date'=>$d['work_date']]);
   return back()->with('ok','Запись дневника добавлена.');
  }
 
@@ -170,6 +181,8 @@ class LearningController extends Controller {
   abort_unless($entry->user_id===$request->user()->id,403);
   $d=$request->validate(['work_date'=>'required|date','work_done'=>'required|string|max:50000','supervisor'=>'nullable|string|max:255']);
   $entry->update($d);
+  $entry->loadMissing('item.section');
+  $this->logActivity($request,'practice_diary_update','Изменил запись дневника',$entry->item?->section,$entry->item,['entry_id'=>$entry->id]);
   return back()->with('ok','Запись дневника сохранена.');
  }
 
@@ -180,6 +193,7 @@ class LearningController extends Controller {
   abort_unless($assignmentId,422,'Для сертификата не назначен тест.');
   $attempt=QuizAttempt::where('quiz_assignment_id',$assignmentId)->where('user_id',$request->user()->id)->where('passed',1)->latest('finished_at')->first();
   abort_unless($attempt,403,'Сертификат доступен после успешного прохождения теста.');
+  $this->logActivity($request,'certificate_open','Открыл сертификат',$item->section,$item,['attempt_id'=>$attempt->id]);
   return view('learning.certificate',compact('item','attempt'));
  }
 
@@ -189,6 +203,7 @@ class LearningController extends Controller {
   $raw=Storage::get($item->file_path);$rows=[];
   foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,';');}
   if($rows && count($rows[0])===1){$rows=[];foreach(preg_split('/\R/u',$raw) as $line){if(trim($line)==='')continue;$rows[]=str_getcsv($line,',');}}
+  $this->logActivity($request,'table_open','Открыл таблицу',$item->section,$item);
   return view('learning.table',compact('item','rows'));
  }
 
@@ -198,6 +213,7 @@ class LearningController extends Controller {
   $enrollment=Enrollment::where('user_id',$request->user()->id)->where('program_id',$item->section->program_id)->where('status','active')->firstOrFail();
   $enrollment->load('program');
   $completion->complete($enrollment);
+  $this->logActivity($request,'program_complete','Завершил обучение',$item->section,$item);
   return redirect()->route('programs.show',$enrollment)->with('ok','Программа успешно завершена.');
  }
 
@@ -229,6 +245,7 @@ class LearningController extends Controller {
    });
    $meta['random_value']=$ticket->ticket_number;$meta['generated_at']=$ticket->created_at?->toIso8601String();
    $response->meta=$meta;$response->status='submitted';$response->submitted_at=now();$response->save();
+   $this->logActivity($request,'ticket_assigned','Получил билет',$item->section,$item,['ticket_number'=>$ticket->ticket_number]);
    return back()->with('ok','Билет закреплён за вами: '.$ticket->ticket_number);
   }
   if($request->hasFile('file')){
@@ -242,6 +259,7 @@ class LearningController extends Controller {
   }
   $response->text=$data['text']??$response->text;
   $response->status='submitted';$response->submitted_at=now();$response->reviewed_by=null;$response->reviewed_at=null;$response->review_comment=null;$response->save();
+  $this->logActivity($request,'response_submit','Отправил ответ/файл',$item->section,$item,['legacy_type'=>$legacy]);
   return back()->with('ok','Ответ сохранён и отправлен куратору.');
  }
 
@@ -258,6 +276,14 @@ class LearningController extends Controller {
  }
 
 
+
+ private function logActivity(Request $request,string $action,string $label,?LearningSection $section=null,?ContentItem $item=null,array $meta=[]): void{
+  $programId=$section?->program_id ?: $item?->section?->program_id;
+  NmoActivityLog::create([
+   'user_id'=>$request->user()->id,'program_id'=>$programId,'learning_section_id'=>$section?->id,
+   'content_item_id'=>$item?->id,'action'=>$action,'label'=>$label,'meta'=>$meta?:null,'ip'=>$request->ip()
+  ]);
+ }
 
  private function assertPaid(Request $request,ContentItem $item): void{
   $item->loadMissing('section');
