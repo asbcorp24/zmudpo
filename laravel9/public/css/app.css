@@ -106,3 +106,12 @@ input,select,textarea{max-width:100%}
  .page-heading{align-items:flex-start;flex-direction:column}.login-card{padding:26px}.panel,.card{padding:16px}
  .list-row{align-items:flex-start;flex-direction:column}.table-responsive{font-size:13px}
 }
+/* Compatibility with legacy Blade classes while the views are migrated incrementally. */
+.btn.gray{background:#667085;border-color:#667085;color:#fff}
+.btn.gray:hover{background:#525b6a;border-color:#525b6a;color:#fff}
+.btn.red{background:#b42318;border-color:#b42318;color:#fff}
+.btn.red:hover{background:#912018;border-color:#912018;color:#fff}
+.ok{background:#ecfdf3;border:1px solid #c7eed8;color:#146c43;padding:12px 14px;border-radius:10px;margin-bottom:16px}
+.err{background:#fef3f2;border:1px solid #ffd1cc;color:#b42318;padding:12px 14px;border-radius:10px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.table-wrap{width:100%;overflow:auto;-webkit-overflow-scrolling:touch}
