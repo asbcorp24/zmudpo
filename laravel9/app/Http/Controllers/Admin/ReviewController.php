@@ -37,7 +37,7 @@ class ReviewController extends Controller
     }
 
 
-    public function contentResponse(Request $r,ContentItemResponse $response)
+    public function contentResponse(Request $r,ContentItemResponse $response,ProgramProgressService $progress)
     {
         $response->loadMissing('item.section');
         $programId=$response->item?->section?->program_id;
@@ -45,6 +45,7 @@ class ReviewController extends Controller
         abort_unless($r->user()->isAdmin() || $enrollment->curator_id===$r->user()->id,403);
         $d=$r->validate(['status'=>'required|in:accepted,rejected,revision','score'=>'nullable|numeric','review_comment'=>'nullable|string|max:10000']);
         $response->update($d+['reviewed_by'=>$r->user()->id,'reviewed_at'=>now()]);
+        $progress->calculate($enrollment);
         return back()->with('ok','Ответ на учебный материал проверен');
     }
 
