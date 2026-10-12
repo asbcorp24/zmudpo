@@ -59,6 +59,11 @@ class QuizController extends Controller
             if($item->available_from&&now()->lt($item->available_from))abort(403,'Тест ещё не открыт.');
             if($item->available_until&&now()->gt($item->available_until))abort(403,'Срок доступа к тесту завершён.');
             if(data_get($item->settings,'password_required')&&!$r->session()->get('content_unlocked.'.$item->id))abort(403,'Тест защищён одноразовым кодом доступа.');
+            if($item->repeat_limit){
+                $attempts=QuizAttempt::where('quiz_assignment_id',$a->id)->where('user_id',$r->user()->id)->count();
+                $passed=QuizAttempt::where('quiz_assignment_id',$a->id)->where('user_id',$r->user()->id)->where('passed',1)->exists();
+                abort_if(!$passed && $attempts >= $item->repeat_limit,403,'Лимит попыток исчерпан.');
+            }
             $pay=ContentItem::whereHas('section',fn($q)=>$q->where('program_id',$a->program_id))->where('legacy_type',11)->where('is_active',1)->whereJsonContains('settings->unlock_item_ids',$item->id)->exists();
             if($pay&&!ContentItemEntitlement::where('user_id',$r->user()->id)->where('content_item_id',$item->id)->exists())abort(402,'Тест доступен после оплаты.');
         }
