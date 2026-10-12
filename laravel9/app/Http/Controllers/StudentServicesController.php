@@ -87,6 +87,7 @@ class StudentServicesController extends Controller
             if(is_array($value))$value=json_encode(array_values($value),JSON_UNESCAPED_UNICODE);
             SurveyResponse::updateOrCreate(['survey_field_id'=>$field->id,'user_id'=>$request->user()->id],['value'=>$value]);
         }
+        NmoActivityLog::create(['user_id'=>$request->user()->id,'action'=>'survey_submit','label'=>'Заполнил анкету','meta'=>['survey_id'=>$survey->id,'title'=>$survey->title],'ip'=>$request->ip()]);
         return back()->with('ok','Ответы сохранены.');
     }
 
