@@ -38,7 +38,7 @@ class OrganizationController extends Controller
     {
         abort_unless($organization->is_legal_entity,404);
         $d=$r->validate([
-            'full_name'=>'required|string|max:255','email'=>'nullable|email|max:255','phone'=>'nullable|string|max:50',
+            'full_name'=>'required|string|max:255','email'=>'nullable|email|max:255|unique:users,email,'.$organization->id,'phone'=>'nullable|string|max:50',
             'short_name'=>'nullable|string|max:255','inn'=>'nullable|string|max:20','kpp'=>'nullable|string|max:20','ogrn'=>'nullable|string|max:30',
             'legal_address'=>'nullable|string|max:500','actual_address'=>'nullable|string|max:500','contact_person'=>'nullable|string|max:255',
             'contact_position'=>'nullable|string|max:255','contract_number'=>'nullable|string|max:100','contract_date'=>'nullable|date','comment'=>'nullable|string|max:2000',
@@ -87,7 +87,7 @@ class OrganizationController extends Controller
     public function employeeUpdate(Request $r,User $organization,User $employee)
     {
         abort_unless($organization->is_legal_entity && $employee->parent_user_id===$organization->id,403);
-        $d=$r->validate(['full_name'=>'required|string|max:255','email'=>'nullable|email|max:255','phone'=>'nullable|string|max:50','is_active'=>'nullable|boolean']);
+        $d=$r->validate(['full_name'=>'required|string|max:255','email'=>'nullable|email|max:255|unique:users,email,'.$employee->id,'phone'=>'nullable|string|max:50','is_active'=>'nullable|boolean']);
         $activate=$r->boolean('is_active')&&!$employee->is_active;
         $employee->update(['full_name'=>$d['full_name'],'email'=>$d['email']??null,'phone'=>$d['phone']??null,'is_active'=>$r->boolean('is_active')]);
         if($activate&&$employee->email)Password::sendResetLink(['email'=>$employee->email]);
