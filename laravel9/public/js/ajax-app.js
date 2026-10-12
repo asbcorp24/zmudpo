@@ -25,7 +25,7 @@
   };
 
   const shouldHandleForm = (form) => {
-    if (!form || form.dataset.noAjax !== undefined) return false;
+    if (!form || form.dataset.noAjax !== undefined || form.dataset.ajax === '1') return false;
     const target = form.getAttribute('target');
     if (target && target !== '_self') return false;
     const action = form.getAttribute('action') || window.location.href;
