@@ -22,6 +22,7 @@ class LearningController extends Controller {
    ->orderBy('position')]);
   $progress=SectionProgress::firstOrCreate(['user_id'=>$request->user()->id,'learning_section_id'=>$section->id],['progress_percent'=>0]);
   $quizzes=QuizAssignment::with('quiz')->where('program_id',$section->program_id)->where('learning_section_id',$section->id)->where('is_active',true)->get();
+  $linkedQuizIds=$section->contentItems->map(fn($item)=>(int)data_get($item->settings,'quiz_assignment_id'))->filter()->unique();
   $quizAttempts=QuizAttempt::where('user_id',$request->user()->id)->whereIn('quiz_assignment_id',$quizzes->pluck('id'))->latest('finished_at')->get()->groupBy('quiz_assignment_id');
   $practice=PracticeAssignment::where('program_id',$section->program_id)->where('learning_section_id',$section->id)->where('is_active',true)->get();
   $submissions=Submission::where('user_id',$request->user()->id)->whereIn('practice_assignment_id',$practice->pluck('id'))->get()->keyBy('practice_assignment_id');
@@ -45,7 +46,7 @@ class LearningController extends Controller {
   $slotCounts=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) cnt')->whereIn('slot_id',$slotIds)->groupBy('slot_id')->pluck('cnt','slot_id');
   $sectionVisits=LearningSectionVisit::where('learning_section_id',$section->id)->where('user_id',$request->user()->id)->latest('visited_at')->limit(10)->get();
 
-  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds','announcements','acknowledged','instructorAssignments','bookedSlotIds','slotCounts','enrollment','sectionVisits'));
+  return view('learning.show',compact('section','progress','quizzes','linkedQuizIds','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds','announcements','acknowledged','instructorAssignments','bookedSlotIds','slotCounts','enrollment','sectionVisits'));
  }
 
 
