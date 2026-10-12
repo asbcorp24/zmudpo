@@ -47,6 +47,7 @@ class ReportController extends Controller
             ->groupBy('user_id')->get()->keyBy('user_id');
 
         $practice=Submission::whereIn('user_id',$userIds)
+            ->whereHas('practiceAssignment',fn($q)=>$q->whereIn('program_id',$programIds))
             ->selectRaw("user_id,count(*) total,sum(case when status in ('accepted','passed') then 1 else 0 end) accepted,avg(score) avg_score")
             ->groupBy('user_id')->get()->keyBy('user_id');
 
