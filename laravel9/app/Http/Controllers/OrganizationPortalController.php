@@ -18,15 +18,15 @@ class OrganizationPortalController extends Controller
     public function index(Request $r)
     {
         $org=$this->org($r)->load(['organizationProfile','employees.enrollments.program','employees.enrollments.group','enrollments.program']);
-        $programs=$org->enrollments()->with('program')->whereIn('status',['active','completed'])->get();
+        $programs=$org->enrollments()->with('program')->where('status','active')->get();
         return view('organization.index',compact('org','programs'));
     }
 
     public function store(Request $r)
     {
         $org=$this->org($r);
-        $d=$r->validate(['program_id'=>'required|exists:programs,id','full_name'=>'required|string|max:255','email'=>'nullable|email|max:255']);
-        $orgEnrollment=$org->enrollments()->where('program_id',$d['program_id'])->whereIn('status',['active','completed'])->firstOrFail();
+        $d=$r->validate(['program_id'=>'required|exists:programs,id','full_name'=>'required|string|max:255','email'=>'nullable|email|max:255|unique:users,email']);
+        $orgEnrollment=$org->enrollments()->where('program_id',$d['program_id'])->where('status','active')->firstOrFail();
         $employee=DB::transaction(function()use($d,$org,$orgEnrollment){
             $u=User::create([
                 'login'=>'org'.$org->id.'_'.Str::lower(Str::random(8)),
@@ -47,7 +47,7 @@ class OrganizationPortalController extends Controller
     public function update(Request $r,User $employee)
     {
         $org=$this->org($r);abort_unless($employee->parent_user_id===$org->id,403);
-        $d=$r->validate(['full_name'=>'required|string|max:255','email'=>'nullable|email|max:255']);
+        $d=$r->validate(['full_name'=>'required|string|max:255','email'=>'nullable|email|max:255|unique:users,email,'.$employee->id]);
         $employee->update($d);
         return back()->with('ok','Данные сотрудника сохранены.');
     }
