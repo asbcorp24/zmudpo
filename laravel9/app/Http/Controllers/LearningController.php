@@ -30,7 +30,6 @@ class LearningController extends Controller {
   $paymentTargets=collect();foreach($paymentItems as $pay){foreach((array)data_get($pay->settings,'unlock_item_ids',[]) as $targetId)$paymentTargets->put((int)$targetId,$pay);}
   $entitledItemIds=ContentItemEntitlement::where('user_id',$request->user()->id)->whereIn('content_item_id',$paymentTargets->keys())->pluck('content_item_id');
 
-  LearningSectionVisit::create(['learning_section_id'=>$section->id,'user_id'=>$request->user()->id,'visited_at'=>now()]);
   $enrollment=Enrollment::with('group')->where('user_id',$request->user()->id)->where('program_id',$section->program_id)->where('status','active')->first();
   $announcements=Announcement::where('is_active',true)
    ->where(fn($q)=>$q->whereNull('published_at')->orWhere('published_at','<=',now()))
@@ -44,8 +43,16 @@ class LearningController extends Controller {
   $slotIds=$instructorAssignments->flatMap(fn($a)=>$a->slots->pluck('id'));
   $bookedSlotIds=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->where('user_id',$request->user()->id)->whereIn('slot_id',$slotIds)->pluck('slot_id');
   $slotCounts=$slotIds->isEmpty()?collect():DB::table('instructor_slot_user')->selectRaw('slot_id,count(*) cnt')->whereIn('slot_id',$slotIds)->groupBy('slot_id')->pluck('cnt','slot_id');
+  $sectionVisits=LearningSectionVisit::where('learning_section_id',$section->id)->where('user_id',$request->user()->id)->latest('visited_at')->limit(10)->get();
 
-  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds','announcements','acknowledged','instructorAssignments','bookedSlotIds','slotCounts','enrollment'));
+  return view('learning.show',compact('section','progress','quizzes','quizAttempts','practice','submissions','responses','paymentTargets','entitledItemIds','announcements','acknowledged','instructorAssignments','bookedSlotIds','slotCounts','enrollment','sectionVisits'));
+ }
+
+
+ public function markSectionVisit(Request $request,LearningSection $section,LearningAccessService $access){
+  abort_unless($access->canOpenSection($request->user(),$section),403);
+  LearningSectionVisit::create(['learning_section_id'=>$section->id,'user_id'=>$request->user()->id,'visited_at'=>now()]);
+  return back()->with('ok','Присутствие отмечено: '.now()->format('d.m.Y H:i:s'));
  }
 
  public function acknowledgeAnnouncement(Request $request,Announcement $announcement){
